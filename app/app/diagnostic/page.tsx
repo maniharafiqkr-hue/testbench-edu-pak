@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { StudentShell } from "../../components/StudentShell";
+import { startDiagnosticAttempt } from "./actions";
 
 export default function DiagnosticInstructions() {
   return (
@@ -14,7 +15,12 @@ export default function DiagnosticInstructions() {
             <div><span>04</span><strong>One attempt</strong><p>Answer honestly so your first plan is useful.</p></div>
           </div>
           <div className="integrity-note"><strong>Keep this attempt honest.</strong><p>Use no notes or outside help. If you are unsure, choose your best answer—we measure uncertainty too.</p></div>
-          <div className="instruction-actions"><Link className="button" href="/app/diagnostic/session">Start diagnostic</Link><Link className="button button-secondary" href="/app/home">Return home</Link></div>
+          <div className="instruction-actions">
+            <form action={startDiagnosticAttempt}>
+              <button className="button" type="submit">Start or resume diagnostic</button>
+            </form>
+            <Link className="button button-secondary" href="/app/home">Return home</Link>
+          </div>
         </section>
         <aside className="panel checklist-panel"><span className="card-kicker">READY CHECK</span><h2>Before the timer starts</h2><ul><li>Find a quiet 30-minute window</li><li>Keep paper nearby for planning</li><li>Use a stable device and connection</li><li>Submit your own first response</li></ul><div className="support-note"><span>Writing review</span><strong>Usually returned within 24 hours</strong></div></aside>
       </div>

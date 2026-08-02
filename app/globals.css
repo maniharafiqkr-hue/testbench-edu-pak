@@ -166,6 +166,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .integrity-note strong { font-size: 13px; }
 .integrity-note p { color: var(--ink-soft); font-size: 11px; margin: 5px 0; }
 .instruction-actions, .result-actions { display: flex; gap: 10px; margin-top: 28px; }
+.instruction-actions form { display: contents; }
 .checklist-panel { align-self: start; }
 .checklist-panel ul { list-style: none; margin: 25px 0; padding: 0; }
 .checklist-panel li { border-top: 1px solid #e6e9e5; font-size: 12px; padding: 14px 0 14px 22px; position: relative; }
@@ -229,6 +230,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .exam-header > div:first-child span { color: #9cb2aa; font-size: 10px; margin-top: 3px; }
 .exam-save { color: #aec0b9; font-size: 10px; margin-right: 32px; }
 .exam-save i { background: var(--lime); border-radius: 50%; display: inline-block; height: 6px; margin-right: 7px; width: 6px; }
+.exam-save-saving i { background: #f2c94c; }
+.exam-save-error { color: #ffc5bb; }
+.exam-save-error i { background: #ff806b; }
 .exam-timer { border-left: 1px solid #3d594f; display: flex; flex-direction: column; min-width: 125px; padding-left: 25px; text-align: right; }
 .exam-timer span { color: #9cb2aa; font-size: 9px; text-transform: uppercase; }
 .exam-timer strong { color: var(--lime); font-size: 18px; letter-spacing: .04em; margin-top: 3px; }
@@ -258,11 +262,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .passage-box span, .prompt-note span { color: var(--green); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .passage-box p, .prompt-note p { color: var(--ink-soft); font-family: Georgia, serif; font-size: 14px; line-height: 1.7; margin: 9px 0 0; }
 .answer-options { display: flex; flex-direction: column; gap: 9px; }
-.answer-options label { align-items: center; border: 1px solid #dce1db; border-radius: 9px; cursor: pointer; display: grid; gap: 13px; grid-template-columns: 30px 1fr; padding: 13px; }
-.answer-options label:hover, .answer-options label.selected { background: #f4f8f5; border-color: var(--green); }
-.answer-options input { height: 0; opacity: 0; position: absolute; width: 0; }
-.answer-options label > span { align-items: center; background: #edf0ed; border-radius: 6px; display: flex; font-size: 10px; font-weight: 800; height: 30px; justify-content: center; width: 30px; }
-.answer-options label.selected > span { background: var(--green); color: white; }
+.answer-options button { align-items: center; background: white; border: 1px solid #dce1db; border-radius: 9px; color: var(--ink); cursor: pointer; display: grid; font: inherit; gap: 13px; grid-template-columns: 30px 1fr; padding: 13px; text-align: left; }
+.answer-options button:hover, .answer-options button:focus-visible, .answer-options button.selected { background: #f4f8f5; border-color: var(--green); outline: 0; }
+.answer-options button:focus-visible { box-shadow: 0 0 0 3px rgba(23,96,79,.1); }
+.answer-options button > span { align-items: center; background: #edf0ed; border-radius: 6px; display: flex; font-size: 10px; font-weight: 800; height: 30px; justify-content: center; width: 30px; }
+.answer-options button.selected > span { background: var(--green); color: white; }
 .answer-options p { font-size: 12px; margin: 0; }
 .written-answer label, .writing-toolbar label { display: block; font-size: 11px; font-weight: 800; margin-bottom: 9px; }
 .written-answer textarea { border: 1px solid #cfd7d1; border-radius: 9px; color: var(--ink); min-height: 150px; outline: 0; padding: 14px; resize: vertical; width: 100%; }

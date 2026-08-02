@@ -37,3 +37,33 @@ test("defines the PostgreSQL learning loop", async () => {
   assert.match(database, /drizzle-orm\/neon-http/);
   assert.match(database, /DATABASE_URL/);
 });
+
+test("persists and scores the pilot diagnostic", async () => {
+  const actions = await readFile(new URL("../app/app/diagnostic/actions.ts", import.meta.url), "utf8");
+  assert.match(actions, /ensurePilotAssessment/);
+  assert.match(actions, /ensurePilotStudent/);
+  assert.match(actions, /onConflictDoUpdate/);
+  assert.match(actions, /objectiveScore/);
+  assert.match(actions, /writingReviews/);
+
+  const sessionPage = await readFile(
+    new URL("../app/app/diagnostic/session/page.tsx", import.meta.url),
+    "utf8",
+  );
+  const sessionClient = await readFile(
+    new URL("../app/app/diagnostic/session/DiagnosticSessionClient.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(sessionPage, /getPilotStudentId/);
+  assert.match(sessionPage, /answerByQuestionId/);
+  assert.match(sessionClient, /saveDiagnosticAnswer/);
+  assert.match(sessionClient, /submitDiagnosticAttempt/);
+
+  const results = await readFile(new URL("../app/app/results/page.tsx", import.meta.url), "utf8");
+  assert.match(results, /attempt\.objectiveScore/);
+  assert.match(results, /objectiveMaximum/);
+
+  const pilotContent = await readFile(new URL("../db/pilot-assessment.ts", import.meta.url), "utf8");
+  assert.match(pilotContent, /fbise-grade-10-english-starting-diagnostic/);
+  assert.match(pilotContent, /comprehension-evidence/);
+});
