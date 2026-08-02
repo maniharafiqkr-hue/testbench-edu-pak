@@ -12,7 +12,7 @@ const navigation = [
   ["home", "Home", "/app/home"],
   ["practice", "Practice", "/app/diagnostic"],
   ["plan", "My plan", "/app/plan"],
-  ["progress", "Progress", "/app/results"],
+  ["progress", "Progress", "/app/progress"],
 ] as const;
 
 export function StudentShell({ current, title, kicker, children }: StudentShellProps) {

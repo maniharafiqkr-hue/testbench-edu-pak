@@ -369,6 +369,71 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .student-rubric span { color: var(--ink-soft); font-size: 9px; }
 .student-rubric strong { color: var(--ink); margin-left: 5px; }
 
+/* Repair activities and mastery */
+.level.priority { background: #fff0ec; color: #9d4432; }
+.plan-task.pending { border-color: #d9c38f; }
+.plan-task.complete .task-number { background: var(--green); color: white; }
+.plan-why > div small { color: var(--ink-soft); font-size: 9px; }
+.plan-why > a { color: var(--green); display: inline-block; font-size: 11px; font-weight: 800; margin-top: 8px; }
+.activity-heading { align-items: center; display: flex; justify-content: space-between; margin-bottom: 16px; }
+.activity-heading > a { color: var(--green); font-size: 11px; font-weight: 800; }
+.activity-state-card { margin: 0 auto; max-width: 760px; padding: 40px; text-align: center; }
+.activity-state-card h2 { font-family: Georgia, serif; font-size: 30px; font-weight: 500; margin: 20px 0 10px; }
+.activity-state-card p { color: var(--ink-soft); line-height: 1.7; margin: 0 auto 24px; max-width: 620px; }
+.learning-activity { margin: 0 auto; max-width: 900px; padding: 34px; }
+.learning-activity > h2 { font-family: Georgia, serif; font-size: 29px; font-weight: 500; line-height: 1.35; margin: 12px 0 22px; }
+.learning-activity > form:not(.activity-options) { margin-top: 24px; }
+.activity-options { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.activity-options label { align-items: center; border: 1px solid #dce2dc; border-radius: 10px; cursor: pointer; display: flex; gap: 12px; padding: 15px; }
+.activity-options label:has(input:checked) { background: var(--mint); border-color: #99c4b2; }
+.activity-options input { accent-color: var(--green); }
+.activity-options span { font-size: 12px; }
+.activity-options .button { align-self: flex-start; margin-top: 10px; }
+.activity-complete { background: var(--mint); border-radius: 11px; padding: 22px; }
+.activity-complete p { color: var(--ink-soft); line-height: 1.6; }
+.rewrite-workflow { display: flex; flex-direction: column; gap: 18px; }
+.rewrite-instruction { border-left: 5px solid var(--lime); padding: 28px; }
+.rewrite-instruction h2 { font-family: Georgia, serif; font-size: 27px; font-weight: 500; line-height: 1.4; margin: 12px 0; }
+.rewrite-instruction > p { color: var(--ink-soft); }
+.rewrite-comparison, .teacher-comparison { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+.rewrite-comparison article, .teacher-comparison article { padding: 26px; }
+.rewrite-comparison p, .comparison-response { font-family: Georgia, serif; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+.rewrite-form { display: flex; flex-direction: column; gap: 10px; }
+.rewrite-form label, .rewrite-review-form > label:not(.decision-option) { font-size: 11px; font-weight: 800; }
+.rewrite-form textarea, .rewrite-review-form textarea { border: 1px solid #cfd7d1; border-radius: 9px; line-height: 1.65; padding: 14px; resize: vertical; width: 100%; }
+.rewrite-form .button, .rewrite-review-form .button { align-self: flex-start; }
+.rewrite-target-card { margin-bottom: 16px; padding: 27px; }
+.rewrite-target-card h2 { font-family: Georgia, serif; font-size: 25px; font-weight: 500; margin: 12px 0; }
+.rewrite-target-card p { color: var(--ink-soft); font-size: 11px; }
+.teacher-comparison { margin-bottom: 18px; }
+.rewrite-review-layout { margin-top: 18px; }
+.rewrite-review-form { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; }
+.decision-option { align-items: start; border: 1px solid #dce2dc; border-radius: 10px; cursor: pointer; display: flex; gap: 12px; padding: 14px; }
+.decision-option:has(input:checked) { background: var(--mint); border-color: #99c4b2; }
+.decision-option input { accent-color: var(--green); margin-top: 3px; }
+.decision-option span { display: flex; flex-direction: column; gap: 4px; }
+.decision-option strong { font-size: 12px; }
+.decision-option small { color: var(--ink-soft); font-size: 10px; line-height: 1.45; }
+.progress-summary-grid { display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); margin-bottom: 18px; }
+.progress-summary-grid article { display: flex; flex-direction: column; padding: 24px; }
+.progress-summary-grid span { color: var(--ink-soft); font-size: 10px; text-transform: uppercase; }
+.progress-summary-grid strong { font-family: Georgia, serif; font-size: 36px; font-weight: 500; margin: 12px 0; }
+.progress-summary-grid small { color: var(--green); font-size: 10px; }
+.progress-main-grid { align-items: start; }
+.mastery-explainer { padding: 26px; }
+.mastery-explainer > p { color: var(--ink-soft); font-size: 11px; line-height: 1.6; }
+.mastery-explainer > div { align-items: center; border-top: 1px solid #e3e7e2; display: grid; gap: 10px; grid-template-columns: auto 1fr; padding: 13px 0; }
+.mastery-explainer > div p { color: var(--ink-soft); font-size: 10px; margin: 0; }
+.mastery-history { margin-top: 20px; padding: 28px; }
+.history-list { margin-top: 20px; }
+.history-list article { align-items: center; border-top: 1px solid #e3e7e2; display: grid; gap: 14px; grid-template-columns: 10px 1fr auto; padding: 14px 0; }
+.history-dot { background: #9aa7a1; border-radius: 50%; height: 9px; width: 9px; }
+.history-dot.secure { background: var(--green); }
+.history-dot.developing { background: #d39238; }
+.history-dot.priority { background: #c25c45; }
+.history-list p, .history-list small { color: var(--ink-soft); font-size: 9px; margin: 4px 0 0; }
+.history-list article > div:last-child { text-align: right; }
+
 @media (max-width: 980px) {
   .site-nav { display: none; }
   .hero { gap: 38px; grid-template-columns: 1fr; padding-top: 35px; }
@@ -387,6 +452,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .staff-metrics { grid-template-columns: repeat(2, 1fr); }
   .review-layout { grid-template-columns: 1fr; }
   .review-source { position: static; }
+  .rewrite-comparison, .teacher-comparison { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {
@@ -445,4 +511,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .feedback-notes { grid-template-columns: 1fr; }
   .feedback-notes > div { border-bottom: 1px solid #e3e7e2; border-right: 0; }
   .feedback-notes > div:last-child { border-bottom: 0; }
+  .progress-summary-grid { grid-template-columns: 1fr; }
+  .activity-state-card, .learning-activity { padding: 24px; }
 }

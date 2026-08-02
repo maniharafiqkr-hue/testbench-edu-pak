@@ -18,6 +18,7 @@ export const questionType = pgEnum("question_type", ["multiple_choice", "short_a
 export const attemptStatus = pgEnum("attempt_status", ["in_progress", "submitted", "awaiting_review", "returned"]);
 export const reviewStatus = pgEnum("review_status", ["pending", "in_review", "returned"]);
 export const planStatus = pgEnum("plan_status", ["active", "completed", "archived"]);
+export const repairItemKind = pgEnum("repair_item_kind", ["review", "practice", "rewrite", "retest"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -181,13 +182,65 @@ export const repairPlanItems = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     planId: uuid("plan_id").notNull().references(() => repairPlans.id, { onDelete: "cascade" }),
     skillId: uuid("skill_id").references(() => skills.id, { onDelete: "set null" }),
+    sourceAnswerId: uuid("source_answer_id").references(() => answers.id, { onDelete: "set null" }),
     position: integer("position").notNull(),
+    kind: repairItemKind("kind").default("review").notNull(),
     title: varchar("title", { length: 200 }).notNull(),
     instructions: text("instructions").notNull(),
+    content: jsonb("content").$type<{
+      prompt?: string;
+      context?: string;
+      options?: string[];
+      correctAnswer?: string;
+      explanation?: string;
+    }>(),
+    response: text("response"),
+    selectedOption: text("selected_option"),
+    awardedMarks: integer("awarded_marks"),
+    maximumMarks: integer("maximum_marks").default(1).notNull(),
     estimatedMinutes: integer("estimated_minutes").notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     unlocksAt: timestamp("unlocks_at", { withTimezone: true }),
     ...timestamps,
   },
   (table) => [uniqueIndex("repair_plan_items_position_unique").on(table.planId, table.position)],
+);
+
+export const repairItemReviews = pgTable(
+  "repair_item_reviews",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    itemId: uuid("item_id").notNull().references(() => repairPlanItems.id, { onDelete: "cascade" }),
+    reviewerId: uuid("reviewer_id").references(() => users.id, { onDelete: "set null" }),
+    status: reviewStatus("status").default("pending").notNull(),
+    achieved: boolean("achieved"),
+    feedback: text("feedback"),
+    returnedAt: timestamp("returned_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("repair_item_reviews_item_unique").on(table.itemId),
+    index("repair_item_reviews_status_idx").on(table.status),
+  ],
+);
+
+export const skillProgressEvents = pgTable(
+  "skill_progress_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    studentId: uuid("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    skillId: uuid("skill_id").notNull().references(() => skills.id, { onDelete: "restrict" }),
+    referenceKey: varchar("reference_key", { length: 180 }).notNull(),
+    source: varchar("source", { length: 60 }).notNull(),
+    score: integer("score").notNull(),
+    maximumScore: integer("maximum_score").notNull(),
+    level: varchar("level", { length: 40 }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("skill_progress_events_reference_unique").on(table.referenceKey),
+    index("skill_progress_events_student_idx").on(table.studentId),
+    index("skill_progress_events_skill_idx").on(table.skillId),
+  ],
 );

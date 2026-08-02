@@ -4,8 +4,18 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { ensurePilotTeacher } from "@/db/pilot-teacher";
-import { answers, attempts, questions, writingReviews } from "@/db/schema";
+import {
+  answers,
+  attempts,
+  questions,
+  repairItemReviews,
+  repairPlanItems,
+  repairPlans,
+  skillProgressEvents,
+  writingReviews,
+} from "@/db/schema";
 import { getReviewCriteria } from "@/lib/review-rubrics";
+import { completeAttemptLearningLoop } from "@/lib/learning-loop";
 import {
   clearTeacherSession,
   createTeacherSession,
@@ -133,6 +143,8 @@ export async function returnWritingReview(formData: FormData) {
       .update(attempts)
       .set({ finalScore, returnedAt, status: "returned", updatedAt: returnedAt })
       .where(eq(attempts.id, review.attemptId));
+
+    await completeAttemptLearningLoop(review.attemptId);
   } else {
     await db
       .update(attempts)
@@ -141,4 +153,74 @@ export async function returnWritingReview(formData: FormData) {
   }
 
   redirect("/staff?returned=1");
+}
+
+export async function returnRewriteReview(formData: FormData) {
+  await requireTeacherSession();
+  const reviewId = fieldText(formData, "reviewId", 40);
+  if (!UUID_PATTERN.test(reviewId)) redirect("/staff?error=invalid-rewrite-review");
+  const achievedValue = fieldText(formData, "achieved", 10);
+  const feedback = fieldText(formData, "feedback");
+  if (!["yes", "no"].includes(achievedValue) || feedback.length < 8) {
+    redirect(`/staff/rewrites/${reviewId}?error=feedback`);
+  }
+
+  const db = getDb();
+  const [review] = await db
+    .select({
+      itemId: repairItemReviews.itemId,
+      planId: repairPlanItems.planId,
+      skillId: repairPlanItems.skillId,
+      sourceAttemptId: repairPlans.sourceAttemptId,
+      studentId: repairPlans.studentId,
+    })
+    .from(repairItemReviews)
+    .innerJoin(repairPlanItems, eq(repairPlanItems.id, repairItemReviews.itemId))
+    .innerJoin(repairPlans, eq(repairPlans.id, repairPlanItems.planId))
+    .where(eq(repairItemReviews.id, reviewId))
+    .limit(1);
+  if (!review) redirect("/staff?error=missing-rewrite-review");
+
+  const reviewerId = await ensurePilotTeacher();
+  const achieved = achievedValue === "yes";
+  const returnedAt = new Date();
+  await db.update(repairItemReviews).set({
+    achieved,
+    feedback,
+    returnedAt,
+    reviewerId,
+    status: "returned",
+    updatedAt: returnedAt,
+  }).where(eq(repairItemReviews.id, reviewId));
+  await db.update(repairPlanItems).set({
+    awardedMarks: achieved ? 1 : 0,
+    completedAt: achieved ? returnedAt : null,
+    updatedAt: returnedAt,
+  }).where(eq(repairPlanItems.id, review.itemId));
+
+  if (achieved && review.skillId) {
+    await db
+      .insert(skillProgressEvents)
+      .values({
+        studentId: review.studentId,
+        skillId: review.skillId,
+        referenceKey: `repair:${review.itemId}`,
+        source: "teacher_confirmed_rewrite",
+        score: 1,
+        maximumScore: 1,
+        level: "secure",
+      })
+      .onConflictDoUpdate({
+        target: skillProgressEvents.referenceKey,
+        set: {
+          source: "teacher_confirmed_rewrite",
+          score: 1,
+          maximumScore: 1,
+          level: "secure",
+          updatedAt: returnedAt,
+        },
+      });
+  }
+
+  redirect("/staff?rewriteReturned=1");
 }

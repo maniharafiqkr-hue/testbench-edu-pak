@@ -2,7 +2,15 @@ import { and, asc, desc, eq, ne } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { answers, assessments, attempts, questions, writingReviews } from "@/db/schema";
+import {
+  answers,
+  assessments,
+  attempts,
+  attemptSkillResults,
+  questions,
+  skills,
+  writingReviews,
+} from "@/db/schema";
 import { getReviewCriteria } from "@/lib/review-rubrics";
 import { getPilotStudentId } from "@/lib/pilot-session";
 import { StudentShell } from "../../components/StudentShell";
@@ -77,6 +85,18 @@ export default async function ResultsPage({ searchParams }: Props) {
     .leftJoin(writingReviews, eq(writingReviews.answerId, answers.id))
     .where(eq(questions.assessmentId, attempt.assessmentId))
     .orderBy(asc(questions.position));
+
+  const calculatedSkills = await db
+    .select({
+      id: attemptSkillResults.id,
+      level: attemptSkillResults.level,
+      maximumScore: attemptSkillResults.maximumScore,
+      name: skills.name,
+      score: attemptSkillResults.score,
+    })
+    .from(attemptSkillResults)
+    .innerJoin(skills, eq(skills.id, attemptSkillResults.skillId))
+    .where(eq(attemptSkillResults.attemptId, attempt.id));
 
   const objectiveRows = responseRows.filter((row) => row.questionType === "multiple_choice");
   const writtenRows = responseRows.filter((row) => row.questionType !== "multiple_choice");
@@ -190,7 +210,13 @@ export default async function ResultsPage({ searchParams }: Props) {
       <section className="panel skill-profile">
         <div className="panel-heading"><div><span className="card-kicker">SKILL PROFILE</span><h2>{allWritingReturned ? "Your complete evidence" : "Objective evidence so far"}</h2></div></div>
         <div className="skill-table">
-          {responseRows.map((row) => {
+          {calculatedSkills.length ? calculatedSkills.map((skill) => (
+            <div key={skill.id}>
+              <strong>{skill.name}</strong>
+              <span className={`level ${skill.level}`}>{skill.level}</span>
+              <span>{skill.score} / {skill.maximumScore}</span>
+            </div>
+          )) : responseRows.map((row) => {
             const score = row.awardedMarks ?? 0;
             const pending = row.questionType !== "multiple_choice" && row.reviewStatus !== "returned";
             const secure = !pending && score / row.marks >= 0.7;
