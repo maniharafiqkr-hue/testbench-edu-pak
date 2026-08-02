@@ -2,7 +2,8 @@ import { and, asc, desc, eq, ne } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { answers, assessments, attempts, questions } from "@/db/schema";
+import { answers, assessments, attempts, questions, writingReviews } from "@/db/schema";
+import { getReviewCriteria } from "@/lib/review-rubrics";
 import { getPilotStudentId } from "@/lib/pilot-session";
 import { StudentShell } from "../../components/StudentShell";
 
@@ -27,11 +28,13 @@ export default async function ResultsPage({ searchParams }: Props) {
   const db = getDb();
   const [attempt] = await db
     .select({
-      id: attempts.id,
       assessmentId: attempts.assessmentId,
       assessmentTitle: assessments.title,
-      status: attempts.status,
+      finalScore: attempts.finalScore,
+      id: attempts.id,
       objectiveScore: attempts.objectiveScore,
+      returnedAt: attempts.returnedAt,
+      status: attempts.status,
       submittedAt: attempts.submittedAt,
     })
     .from(attempts)
@@ -47,39 +50,48 @@ export default async function ResultsPage({ searchParams }: Props) {
   if (!attempt) {
     redirect("/app/diagnostic");
   }
-
   if (attempt.status === "in_progress") {
     redirect("/app/diagnostic/session");
   }
 
   const responseRows = await db
     .select({
-      questionId: questions.id,
-      section: questions.section,
-      type: questions.type,
-      marks: questions.marks,
-      correctAnswer: questions.correctAnswer,
       awardedMarks: answers.awardedMarks,
-      response: answers.response,
+      correctAnswer: questions.correctAnswer,
+      marks: questions.marks,
+      priorityImprovement: writingReviews.priorityImprovement,
+      questionId: questions.id,
+      questionType: questions.type,
+      reviewReturnedAt: writingReviews.returnedAt,
+      reviewStatus: writingReviews.status,
+      rewriteInstruction: writingReviews.rewriteInstruction,
+      rubric: writingReviews.rubric,
+      section: questions.section,
+      strength: writingReviews.strength,
     })
     .from(questions)
     .leftJoin(
       answers,
       and(eq(answers.questionId, questions.id), eq(answers.attemptId, attempt.id)),
     )
+    .leftJoin(writingReviews, eq(writingReviews.answerId, answers.id))
     .where(eq(questions.assessmentId, attempt.assessmentId))
     .orderBy(asc(questions.position));
 
-  const objectiveRows = responseRows.filter((row) => row.type === "multiple_choice");
-  const writtenRows = responseRows.filter((row) => row.type !== "multiple_choice");
+  const objectiveRows = responseRows.filter((row) => row.questionType === "multiple_choice");
+  const writtenRows = responseRows.filter((row) => row.questionType !== "multiple_choice");
+  const returnedWrittenRows = writtenRows.filter((row) => row.reviewStatus === "returned");
+  const allWritingReturned = writtenRows.length > 0 && returnedWrittenRows.length === writtenRows.length;
   const objectiveMaximum = objectiveRows.reduce((total, row) => total + row.marks, 0);
+  const totalMaximum = responseRows.reduce((total, row) => total + row.marks, 0);
   const objectiveScore = attempt.objectiveScore ?? 0;
-  const objectivePercent = objectiveMaximum
-    ? Math.round((objectiveScore / objectiveMaximum) * 100)
-    : 0;
-  const missedObjectiveRows = objectiveRows.filter(
-    (row) => (row.awardedMarks ?? 0) < row.marks,
-  );
+  const finalScore = allWritingReturned
+    ? attempt.finalScore ?? responseRows.reduce((total, row) => total + (row.awardedMarks ?? 0), 0)
+    : null;
+  const displayScore = finalScore ?? objectiveScore;
+  const displayMaximum = finalScore === null ? objectiveMaximum : totalMaximum;
+  const scorePercent = displayMaximum ? Math.round((displayScore / displayMaximum) * 100) : 0;
+  const missedObjectiveRows = objectiveRows.filter((row) => (row.awardedMarks ?? 0) < row.marks);
   const submittedTime = attempt.submittedAt
     ? new Intl.DateTimeFormat("en-PK", {
         dateStyle: "medium",
@@ -92,52 +104,41 @@ export default async function ResultsPage({ searchParams }: Props) {
     <StudentShell current="progress" kicker="DIAGNOSTIC RESULT" title="Your English starting profile">
       <section className="result-hero panel">
         <div>
-          <span className="status status-ready">Objective marking complete</span>
-          <h2>{objectiveScore} of {objectiveMaximum} objective marks</h2>
-          <p>
-            Your written responses were submitted successfully and are awaiting teacher review.
-            They are not counted as zero.
-          </p>
+          <span className="status status-ready">
+            {allWritingReturned ? "Full diagnostic marked" : "Objective marking complete"}
+          </span>
+          <h2>{displayScore} of {displayMaximum} marks</h2>
+          <p>{allWritingReturned
+            ? "Your teacher has returned both written responses. Your final diagnostic result is ready."
+            : "Your written responses are awaiting teacher review and are not counted as zero."}</p>
         </div>
         <div className="result-ring">
-          <strong>{objectivePercent}%</strong>
-          <span>objective</span>
+          <strong>{scorePercent}%</strong>
+          <span>{allWritingReturned ? "final" : "objective"}</span>
         </div>
       </section>
 
       <div className="result-grid">
         <section className="panel">
           <div className="panel-heading">
-            <div>
-              <span className="card-kicker">EXAMINER LENS</span>
-              <h2>Marks you can recover</h2>
-            </div>
+            <div><span className="card-kicker">EXAMINER LENS</span><h2>Marks you can recover</h2></div>
           </div>
           <div className="recovery-list">
-            {missedObjectiveRows.length ? (
-              missedObjectiveRows.slice(0, 2).map((row) => (
-                <article key={row.questionId}>
-                  <span>+{row.marks}</span>
-                  <div>
-                    <strong>Review {row.section.toLowerCase()}</strong>
-                    <p>The correct response was: {row.correctAnswer}</p>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <article>
-                <span>✓</span>
-                <div>
-                  <strong>Strong objective start</strong>
-                  <p>You secured every automatically marked question in this diagnostic.</p>
-                </div>
+            {missedObjectiveRows.length ? missedObjectiveRows.slice(0, 2).map((row) => (
+              <article key={row.questionId}>
+                <span>+{row.marks}</span>
+                <div><strong>Review {row.section.toLowerCase()}</strong><p>The correct response was: {row.correctAnswer}</p></div>
               </article>
+            )) : (
+              <article><span>✓</span><div><strong>Strong objective start</strong><p>You secured every automatically marked question.</p></div></article>
             )}
             <article>
-              <span>Next</span>
+              <span>{allWritingReturned ? "Ready" : "Next"}</span>
               <div>
-                <strong>Written response review</strong>
-                <p>Your comprehension and narrative evidence will update after teacher marking.</p>
+                <strong>{allWritingReturned ? "Teacher feedback returned" : "Written response review"}</strong>
+                <p>{allWritingReturned
+                  ? "Use the feedback below to complete your first rewrite."
+                  : "Your comprehension and narrative evidence will update after teacher marking."}</p>
               </div>
             </article>
           </div>
@@ -145,46 +146,67 @@ export default async function ResultsPage({ searchParams }: Props) {
 
         <aside className="panel marking-card">
           <span className="card-kicker">WRITING STATUS</span>
-          <h2>Teacher review pending</h2>
-          <p>{writtenRows.length} written responses entered the marking queue.</p>
+          <h2>{allWritingReturned ? "Teacher review complete" : "Teacher review pending"}</h2>
+          <p>{allWritingReturned
+            ? `${returnedWrittenRows.length} written responses were marked and returned.`
+            : `${writtenRows.length - returnedWrittenRows.length} of ${writtenRows.length} written responses still need review.`}</p>
           <div className="status-timeline">
             <span className="done">Submitted</span>
-            <span className="current">Reviewing</span>
-            <span>Feedback</span>
+            <span className={allWritingReturned ? "done" : "current"}>Reviewing</span>
+            <span className={allWritingReturned ? "done" : ""}>Feedback</span>
           </div>
           <small>Submitted {submittedTime} PKT</small>
         </aside>
       </div>
 
-      <section className="panel skill-profile">
-        <div className="panel-heading">
-          <div>
-            <span className="card-kicker">SKILL PROFILE</span>
-            <h2>Objective evidence so far</h2>
+      {returnedWrittenRows.length ? (
+        <section className="panel writing-feedback-section">
+          <div className="panel-heading">
+            <div><span className="card-kicker">TEACHER FEEDBACK</span><h2>Your returned writing</h2></div>
           </div>
-        </div>
+          <div className="writing-feedback-list">
+            {returnedWrittenRows.map((row) => {
+              const criteria = getReviewCriteria(row.questionType, row.section, row.marks);
+              return (
+                <article className="writing-feedback-card" key={row.questionId}>
+                  <header><div><span>{row.section}</span><strong>{row.awardedMarks ?? 0} / {row.marks} marks</strong></div></header>
+                  <div className="feedback-notes">
+                    <div><span>Strength</span><p>{row.strength}</p></div>
+                    <div><span>Priority improvement</span><p>{row.priorityImprovement}</p></div>
+                    <div><span>Rewrite next</span><p>{row.rewriteInstruction}</p></div>
+                  </div>
+                  <div className="student-rubric">
+                    {criteria.map((criterion) => (
+                      <span key={criterion.key}>{criterion.label}<strong>{row.rubric?.[criterion.key] ?? 0}/{criterion.maximum}</strong></span>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="panel skill-profile">
+        <div className="panel-heading"><div><span className="card-kicker">SKILL PROFILE</span><h2>{allWritingReturned ? "Your complete evidence" : "Objective evidence so far"}</h2></div></div>
         <div className="skill-table">
-          {objectiveRows.map((row) => {
+          {responseRows.map((row) => {
             const score = row.awardedMarks ?? 0;
-            const secure = score === row.marks;
+            const pending = row.questionType !== "multiple_choice" && row.reviewStatus !== "returned";
+            const secure = !pending && score / row.marks >= 0.7;
             return (
               <div key={row.questionId}>
                 <strong>{row.section}</strong>
-                <span className={`level ${secure ? "secure" : "developing"}`}>
-                  {secure ? "Secure" : "Developing"}
+                <span className={`level ${pending ? "pending" : secure ? "secure" : "developing"}`}>
+                  {pending ? "Pending" : secure ? "Secure" : "Developing"}
                 </span>
-                <span>{score} / {row.marks}</span>
+                <span>{pending ? "—" : `${score} / ${row.marks}`}</span>
               </div>
             );
           })}
-          <div>
-            <strong>Comprehension and writing</strong>
-            <span className="level pending">Pending</span>
-            <span>—</span>
-          </div>
         </div>
         <div className="result-actions">
-          <Link className="button" href="/app/plan">Preview repair plan</Link>
+          <Link className="button" href="/app/plan">{allWritingReturned ? "Build my repair plan" : "Preview repair plan"}</Link>
           <Link className="button button-secondary" href="/app/home">Return home</Link>
         </div>
       </section>

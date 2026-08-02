@@ -6,9 +6,7 @@ TestBench is an English-first diagnostic assessment and repair-planning product 
 
 ## Current product slice
 
-The first implementation targets FBISE Grade 10 English and includes a public landing page, student dashboard, five-part diagnostic, results, seven-day repair plan and teacher marking queue.
-
-The screens currently use demonstration data while the real student, scoring and teacher-review workflows are built.
+The first implementation targets FBISE Grade 10 English and includes a public landing page, a persistent five-part diagnostic, objective scoring, a protected teacher marking queue, rubric-based writing feedback and student results. The student dashboard and seven-day repair plan still use demonstration content.
 
 ## Technology
 
@@ -26,6 +24,7 @@ npm run dev
 ```
 
 Replace the placeholder `DATABASE_URL` in `.env.local` with a Neon pooled connection string before running database commands.
+Set `TEACHER_ACCESS_CODE` to a private random value of at least 12 characters before using the teacher workspace.
 
 ## Database workflow
 
@@ -38,4 +37,4 @@ npm run db:push
 
 ## Deployment
 
-Import `maniharafiqkr-hue/testbench-edu-pak` into Vercel, use the standard Next.js preset, add `DATABASE_URL` to Development, Preview and Production, then deploy the `main` branch.
+Import `maniharafiqkr-hue/testbench-edu-pak` into Vercel, use the standard Next.js preset, add `DATABASE_URL` and `TEACHER_ACCESS_CODE` to Development, Preview and Production, then deploy the `main` branch.

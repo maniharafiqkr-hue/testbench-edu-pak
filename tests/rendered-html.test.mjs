@@ -22,6 +22,8 @@ test("keeps every prototype route", async () => {
     "../app/app/results/page.tsx",
     "../app/app/plan/page.tsx",
     "../app/staff/page.tsx",
+    "../app/staff/login/page.tsx",
+    "../app/staff/reviews/[reviewId]/page.tsx",
   ];
   await Promise.all(routes.map((route) => access(new URL(route, import.meta.url))));
   const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
@@ -66,4 +68,25 @@ test("persists and scores the pilot diagnostic", async () => {
   const pilotContent = await readFile(new URL("../db/pilot-assessment.ts", import.meta.url), "utf8");
   assert.match(pilotContent, /fbise-grade-10-english-starting-diagnostic/);
   assert.match(pilotContent, /comprehension-evidence/);
+});
+
+test("protects and completes the teacher writing-review loop", async () => {
+  const teacherSession = await readFile(new URL("../lib/teacher-session.ts", import.meta.url), "utf8");
+  assert.match(teacherSession, /TEACHER_ACCESS_CODE/);
+  assert.match(teacherSession, /httpOnly: true/);
+  assert.match(teacherSession, /sameSite: "strict"/);
+
+  const staffPage = await readFile(new URL("../app/staff/page.tsx", import.meta.url), "utf8");
+  assert.match(staffPage, /requireTeacherSession/);
+  assert.match(staffPage, /writingReviews/);
+
+  const staffActions = await readFile(new URL("../app/staff/actions.ts", import.meta.url), "utf8");
+  assert.match(staffActions, /returnWritingReview/);
+  assert.match(staffActions, /finalScore/);
+  assert.match(staffActions, /status: "returned"/);
+
+  const results = await readFile(new URL("../app/app/results/page.tsx", import.meta.url), "utf8");
+  assert.match(results, /Teacher feedback/);
+  assert.match(results, /attempt\.finalScore/);
+  assert.match(results, /writingReviews/);
 });
