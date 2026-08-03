@@ -115,6 +115,10 @@ test("implements named accounts, invitations, and audit history", async () => {
   assert.match(staffUserActions, /randomBytes\(32\)/);
   assert.match(staffUserActions, /requireStaffManager/);
   assert.match(staffUserActions, /staff_role\.updated/);
+
+  const proxy = await readFile(new URL("../proxy.ts", import.meta.url), "utf8");
+  assert.match(proxy, /request\.headers\.has\("next-action"\)/);
+  assert.match(proxy, /NextResponse\.next\(\)/);
 });
 
 test("generates and completes a personalised repair loop", async () => {
