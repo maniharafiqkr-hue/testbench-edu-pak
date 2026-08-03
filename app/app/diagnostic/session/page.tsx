@@ -2,16 +2,13 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { answers, assessments, attempts, questions } from "@/db/schema";
-import { getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 import { DiagnosticSessionClient, type DiagnosticQuestion } from "./DiagnosticSessionClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function DiagnosticSessionPage() {
-  const studentId = await getPilotStudentId();
-  if (!studentId) {
-    redirect("/app/diagnostic");
-  }
+  const studentId = (await requireStudentUser()).id;
 
   const db = getDb();
   const [attempt] = await db

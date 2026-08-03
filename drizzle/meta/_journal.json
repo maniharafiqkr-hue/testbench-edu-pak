@@ -15,6 +15,13 @@
       "when": 1785688390422,
       "tag": "0001_keen_nightmare",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785764303393,
+      "tag": "0002_dazzling_bullseye",
+      "breakpoints": true
     }
   ]
 }

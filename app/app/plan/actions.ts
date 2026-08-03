@@ -12,7 +12,7 @@ import {
   skillProgressEvents,
 } from "@/db/schema";
 import { completeAttemptLearningLoop, type RepairActivityContent } from "@/lib/learning-loop";
-import { getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -22,8 +22,8 @@ function fieldText(formData: FormData, name: string, maximumLength = 4000) {
 }
 
 async function ownedItem(itemId: string) {
-  const studentId = await getPilotStudentId();
-  if (!studentId || !UUID_PATTERN.test(itemId)) return null;
+  const studentId = (await requireStudentUser()).id;
+  if (!UUID_PATTERN.test(itemId)) return null;
 
   const db = getDb();
   const [item] = await db
@@ -90,9 +90,9 @@ async function recordCompletion(itemId: string, item: NonNullable<Awaited<Return
 }
 
 export async function buildRepairPlan(formData: FormData) {
-  const studentId = await getPilotStudentId();
+  const studentId = (await requireStudentUser()).id;
   const attemptId = fieldText(formData, "attemptId", 40);
-  if (!studentId || !UUID_PATTERN.test(attemptId)) redirect("/app/diagnostic");
+  if (!UUID_PATTERN.test(attemptId)) redirect("/app/diagnostic");
 
   const [attempt] = await getDb()
     .select({ id: attempts.id })

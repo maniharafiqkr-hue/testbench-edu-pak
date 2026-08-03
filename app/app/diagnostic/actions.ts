@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { ensurePilotAssessment } from "@/db/pilot-assessment";
 import { getDb } from "@/db";
 import { answers, assessments, attempts, questions, writingReviews } from "@/db/schema";
-import { ensurePilotStudent, getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_RESPONSE_LENGTH = 5_000;
@@ -118,7 +118,7 @@ async function persistDraftAnswers(
 
 export async function startDiagnosticAttempt() {
   const [studentId, assessmentId] = await Promise.all([
-    ensurePilotStudent(),
+    requireStudentUser().then((student) => student.id),
     ensurePilotAssessment(),
   ]);
   const db = getDb();
@@ -148,10 +148,7 @@ export async function startDiagnosticAttempt() {
 }
 
 export async function saveDiagnosticAnswer(attemptId: string, draft: DiagnosticAnswerDraft) {
-  const studentId = await getPilotStudentId();
-  if (!studentId) {
-    throw new Error("Your pilot session has expired. Start the diagnostic again.");
-  }
+  const studentId = (await requireStudentUser()).id;
 
   const attempt = await getOwnedAttempt(attemptId, studentId);
   if (!attempt || attempt.status !== "in_progress") {
@@ -165,10 +162,7 @@ export async function submitDiagnosticAttempt(
   attemptId: string,
   drafts: DiagnosticAnswerDraft[],
 ) {
-  const studentId = await getPilotStudentId();
-  if (!studentId) {
-    throw new Error("Your pilot session has expired. Start the diagnostic again.");
-  }
+  const studentId = (await requireStudentUser()).id;
 
   const attempt = await getOwnedAttempt(attemptId, studentId);
   if (!attempt) {

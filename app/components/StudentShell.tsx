@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { UserButton } from "@neondatabase/auth-ui";
 import { Brand } from "./Brand";
 
 type StudentShellProps = {
-  current: "home" | "practice" | "plan" | "progress";
+  current: "home" | "practice" | "plan" | "progress" | "profile";
   title: string;
   kicker?: string;
   children: React.ReactNode;
@@ -13,6 +14,7 @@ const navigation = [
   ["practice", "Practice", "/app/diagnostic"],
   ["plan", "My plan", "/app/plan"],
   ["progress", "Progress", "/app/progress"],
+  ["profile", "Profile", "/app/profile"],
 ] as const;
 
 export function StudentShell({ current, title, kicker, children }: StudentShellProps) {
@@ -39,7 +41,7 @@ export function StudentShell({ current, title, kicker, children }: StudentShellP
             <h1>{title}</h1>
           </div>
           <div className="exam-countdown"><span>Board exam</span><strong>214 days</strong></div>
-          <button className="avatar" aria-label="Open profile">AR</button>
+          <div className="account-button" aria-label="Open account menu"><UserButton /></div>
         </header>
         <div className="app-content">{children}</div>
       </div>

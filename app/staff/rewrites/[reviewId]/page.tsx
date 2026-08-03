@@ -13,7 +13,7 @@ import {
   users,
   writingReviews,
 } from "@/db/schema";
-import { requireTeacherSession } from "@/lib/teacher-session";
+import { REVIEW_ROLES, requireStaffAccess } from "@/lib/accounts";
 import { returnRewriteReview } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ type Props = {
 };
 
 export default async function RewriteReviewPage({ params, searchParams }: Props) {
-  await requireTeacherSession();
+  await requireStaffAccess(REVIEW_ROLES);
   const { reviewId } = await params;
   if (!UUID_PATTERN.test(reviewId)) notFound();
   const db = getDb();

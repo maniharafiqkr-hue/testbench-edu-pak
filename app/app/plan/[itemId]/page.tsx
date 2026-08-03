@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { getDb } from "@/db";
 import {
   answers,
@@ -12,7 +12,7 @@ import {
   writingReviews,
 } from "@/db/schema";
 import type { RepairActivityContent } from "@/lib/learning-loop";
-import { getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 import { StudentShell } from "../../../components/StudentShell";
 import {
   completeReviewActivity,
@@ -30,8 +30,7 @@ type Props = {
 };
 
 export default async function RepairActivityPage({ params, searchParams }: Props) {
-  const studentId = await getPilotStudentId();
-  if (!studentId) redirect("/app/diagnostic");
+  const studentId = (await requireStudentUser()).id;
   const { itemId } = await params;
   if (!UUID_PATTERN.test(itemId)) notFound();
 

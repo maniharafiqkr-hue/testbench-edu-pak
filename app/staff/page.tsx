@@ -1,6 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { Brand } from "@/app/components/Brand";
+import { UserButton } from "@neondatabase/auth-ui";
 import { getDb } from "@/db";
 import {
   answers,
@@ -14,7 +15,7 @@ import {
   users,
   writingReviews,
 } from "@/db/schema";
-import { requireTeacherSession } from "@/lib/teacher-session";
+import { REVIEW_ROLES, ROLE_LABELS, requireStaffAccess } from "@/lib/accounts";
 import { logoutTeacher } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -30,10 +31,10 @@ function submittedLabel(date: Date) {
 export default async function StaffPage({
   searchParams,
 }: {
-  searchParams: Promise<{ returned?: string; rewriteReturned?: string }>;
+  searchParams: Promise<{ accepted?: string; returned?: string; rewriteReturned?: string }>;
 }) {
-  await requireTeacherSession();
-  const { returned, rewriteReturned } = await searchParams;
+  const staff = await requireStaffAccess(REVIEW_ROLES);
+  const { accepted, returned, rewriteReturned } = await searchParams;
   const db = getDb();
   const rows = await db
     .select({
@@ -92,9 +93,8 @@ export default async function StaffPage({
       <header className="staff-header container">
         <Brand />
         <div>
-          <span>Pilot English teacher</span>
-          <form action={logoutTeacher}><button className="text-button" type="submit">Sign out</button></form>
-          <span className="avatar" aria-hidden="true">ET</span>
+          <span>{staff.user.displayName} · {ROLE_LABELS[staff.user.role]}</span>
+          {staff.legacy ? <form action={logoutTeacher}><button className="text-button" type="submit">Sign out</button></form> : <UserButton />}
         </div>
       </header>
 
@@ -107,6 +107,7 @@ export default async function StaffPage({
             : "Every submitted response has been reviewed."}</p>
         </div>
         <div className="staff-title-actions">
+          {(staff.legacy || ["academic_lead", "admin"].includes(staff.user.role)) ? <Link className="button button-secondary" href="/staff/users">Manage staff</Link> : null}
           <Link className="button button-secondary" href="/">View student site</Link>
           {pendingRewrites[0] ? <Link className="button" href={`/staff/rewrites/${pendingRewrites[0].reviewId}`}>Review next rewrite</Link>
             : nextReview ? <Link className="button" href={`/staff/reviews/${nextReview.reviewId}`}>Mark next response</Link> : null}
@@ -115,6 +116,7 @@ export default async function StaffPage({
 
       {returned === "1" ? <div className="container form-alert form-alert-success">Feedback returned to the student successfully.</div> : null}
       {rewriteReturned === "1" ? <div className="container form-alert form-alert-success">Rewrite decision returned. The student’s plan and mastery history were updated.</div> : null}
+      {accepted === "1" ? <div className="container form-alert form-alert-success">Your named staff account is active. The shared pilot code has now retired.</div> : null}
 
       <div className="container staff-metrics">
         <article><span>Awaiting marking</span><strong>{totalAwaiting}</strong><small>{pendingRewrites.length ? "A rewrite needs confirmation" : awaitingRows[0] ? `Oldest · ${submittedLabel(awaitingRows[0].createdAt)} PKT` : "Queue clear"}</small></article>

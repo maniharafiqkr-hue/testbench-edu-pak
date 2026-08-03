@@ -1,6 +1,5 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import {
   attempts,
@@ -10,7 +9,7 @@ import {
   repairPlans,
   skills,
 } from "@/db/schema";
-import { getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 import { StudentShell } from "../../components/StudentShell";
 import { buildRepairPlan } from "./actions";
 
@@ -19,8 +18,7 @@ export const dynamic = "force-dynamic";
 type Props = { searchParams: Promise<{ built?: string; completed?: string }> };
 
 export default async function RepairPlanPage({ searchParams }: Props) {
-  const studentId = await getPilotStudentId();
-  if (!studentId) redirect("/app/diagnostic");
+  const studentId = (await requireStudentUser()).id;
   const db = getDb();
   const { built, completed } = await searchParams;
   const [plan] = await db

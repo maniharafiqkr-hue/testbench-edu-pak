@@ -17,10 +17,15 @@ import {
 import { getReviewCriteria } from "@/lib/review-rubrics";
 import { completeAttemptLearningLoop } from "@/lib/learning-loop";
 import {
+  isLegacyStaffAccessAvailable,
+  recordAuditEvent,
+  requireStaffAccess,
+  REVIEW_ROLES,
+} from "@/lib/accounts";
+import {
   clearTeacherSession,
   createTeacherSession,
   isTeacherAccessConfigured,
-  requireTeacherSession,
   teacherAccessCodeMatches,
 } from "@/lib/teacher-session";
 
@@ -40,6 +45,9 @@ export async function loginTeacher(formData: FormData) {
   if (!teacherAccessCodeMatches(accessCode)) {
     redirect("/staff/login?error=invalid");
   }
+  if (!await isLegacyStaffAccessAvailable()) {
+    redirect("/staff/login?error=legacy-retired");
+  }
 
   await Promise.all([ensurePilotTeacher(), createTeacherSession()]);
   redirect("/staff");
@@ -51,7 +59,7 @@ export async function logoutTeacher() {
 }
 
 export async function returnWritingReview(formData: FormData) {
-  await requireTeacherSession();
+  const staff = await requireStaffAccess(REVIEW_ROLES);
 
   const reviewId = fieldText(formData, "reviewId", 40);
   if (!UUID_PATTERN.test(reviewId)) {
@@ -101,7 +109,7 @@ export async function returnWritingReview(formData: FormData) {
     redirect(`/staff/reviews/${reviewId}?error=rubric`);
   }
 
-  const reviewerId = await ensurePilotTeacher();
+  const reviewerId = staff.user.id;
   const returnedAt = new Date();
 
   await db
@@ -152,11 +160,19 @@ export async function returnWritingReview(formData: FormData) {
       .where(and(eq(attempts.id, review.attemptId), eq(attempts.status, "awaiting_review")));
   }
 
+  await recordAuditEvent({
+    actorUserId: reviewerId,
+    action: "writing_review.returned",
+    entityType: "writing_review",
+    entityId: reviewId,
+    metadata: { awardedMarks, attemptId: review.attemptId },
+  });
+
   redirect("/staff?returned=1");
 }
 
 export async function returnRewriteReview(formData: FormData) {
-  await requireTeacherSession();
+  const staff = await requireStaffAccess(REVIEW_ROLES);
   const reviewId = fieldText(formData, "reviewId", 40);
   if (!UUID_PATTERN.test(reviewId)) redirect("/staff?error=invalid-rewrite-review");
   const achievedValue = fieldText(formData, "achieved", 10);
@@ -181,7 +197,7 @@ export async function returnRewriteReview(formData: FormData) {
     .limit(1);
   if (!review) redirect("/staff?error=missing-rewrite-review");
 
-  const reviewerId = await ensurePilotTeacher();
+  const reviewerId = staff.user.id;
   const achieved = achievedValue === "yes";
   const returnedAt = new Date();
   await db.update(repairItemReviews).set({
@@ -221,6 +237,14 @@ export async function returnRewriteReview(formData: FormData) {
         },
       });
   }
+
+  await recordAuditEvent({
+    actorUserId: reviewerId,
+    action: "rewrite_review.returned",
+    entityType: "repair_item_review",
+    entityId: reviewId,
+    metadata: { achieved, studentId: review.studentId },
+  });
 
   redirect("/staff?rewriteReturned=1");
 }

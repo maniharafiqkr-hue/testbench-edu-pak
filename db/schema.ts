@@ -12,8 +12,16 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-export const userRole = pgEnum("user_role", ["student", "teacher", "academic_lead", "admin"]);
+export const userRole = pgEnum("user_role", [
+  "student",
+  "teacher",
+  "question_author",
+  "reviewer",
+  "academic_lead",
+  "admin",
+]);
 export const gradeLevel = pgEnum("grade_level", ["grade_9", "grade_10", "o_level", "a_level"]);
+export const invitationStatus = pgEnum("invitation_status", ["pending", "accepted", "revoked", "expired"]);
 export const questionType = pgEnum("question_type", ["multiple_choice", "short_answer", "extended_writing"]);
 export const attemptStatus = pgEnum("attempt_status", ["in_progress", "submitted", "awaiting_review", "returned"]);
 export const reviewStatus = pgEnum("review_status", ["pending", "in_review", "returned"]);
@@ -27,13 +35,56 @@ const timestamps = {
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
+  authProviderId: varchar("auth_provider_id", { length: 160 }).unique(),
   email: varchar("email", { length: 320 }).notNull().unique(),
   displayName: varchar("display_name", { length: 160 }).notNull(),
   role: userRole("role").default("student").notNull(),
   gradeLevel: gradeLevel("grade_level"),
+  board: varchar("board", { length: 120 }),
+  schoolName: varchar("school_name", { length: 200 }),
+  profileCompletedAt: timestamp("profile_completed_at", { withTimezone: true }),
+  lastSignedInAt: timestamp("last_signed_in_at", { withTimezone: true }),
   isActive: boolean("is_active").default(true).notNull(),
   ...timestamps,
 });
+
+export const staffInvitations = pgTable(
+  "staff_invitations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: varchar("email", { length: 320 }).notNull(),
+    role: userRole("role").notNull(),
+    tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(),
+    status: invitationStatus("status").default("pending").notNull(),
+    invitedByUserId: uuid("invited_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    acceptedByUserId: uuid("accepted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => [
+    index("staff_invitations_email_idx").on(table.email),
+    index("staff_invitations_status_idx").on(table.status),
+  ],
+);
+
+export const auditEvents = pgTable(
+  "audit_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+    action: varchar("action", { length: 120 }).notNull(),
+    entityType: varchar("entity_type", { length: 80 }).notNull(),
+    entityId: varchar("entity_id", { length: 160 }),
+    metadata: jsonb("metadata").$type<Record<string, string | number | boolean | null>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("audit_events_actor_idx").on(table.actorUserId),
+    index("audit_events_action_idx").on(table.action),
+    index("audit_events_created_idx").on(table.createdAt),
+  ],
+);
 
 export const assessments = pgTable("assessments", {
   id: uuid("id").defaultRandom().primaryKey(),

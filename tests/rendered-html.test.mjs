@@ -43,10 +43,11 @@ test("defines the PostgreSQL learning loop", async () => {
   assert.match(database, /DATABASE_URL/);
 });
 
-test("persists and scores the pilot diagnostic", async () => {
+test("persists and scores an authenticated student diagnostic", async () => {
   const actions = await readFile(new URL("../app/app/diagnostic/actions.ts", import.meta.url), "utf8");
   assert.match(actions, /ensurePilotAssessment/);
-  assert.match(actions, /ensurePilotStudent/);
+  assert.match(actions, /requireStudentUser/);
+  assert.match(actions, /eq\(attempts\.studentId, studentId\)/);
   assert.match(actions, /onConflictDoUpdate/);
   assert.match(actions, /objectiveScore/);
   assert.match(actions, /writingReviews/);
@@ -59,7 +60,7 @@ test("persists and scores the pilot diagnostic", async () => {
     new URL("../app/app/diagnostic/session/DiagnosticSessionClient.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(sessionPage, /getPilotStudentId/);
+  assert.match(sessionPage, /requireStudentUser/);
   assert.match(sessionPage, /answerByQuestionId/);
   assert.match(sessionClient, /saveDiagnosticAnswer/);
   assert.match(sessionClient, /submitDiagnosticAttempt/);
@@ -73,14 +74,14 @@ test("persists and scores the pilot diagnostic", async () => {
   assert.match(pilotContent, /comprehension-evidence/);
 });
 
-test("protects and completes the teacher writing-review loop", async () => {
+test("protects and completes the role-based teacher writing-review loop", async () => {
   const teacherSession = await readFile(new URL("../lib/teacher-session.ts", import.meta.url), "utf8");
   assert.match(teacherSession, /TEACHER_ACCESS_CODE/);
   assert.match(teacherSession, /httpOnly: true/);
   assert.match(teacherSession, /sameSite: "strict"/);
 
   const staffPage = await readFile(new URL("../app/staff/page.tsx", import.meta.url), "utf8");
-  assert.match(staffPage, /requireTeacherSession/);
+  assert.match(staffPage, /requireStaffAccess\(REVIEW_ROLES\)/);
   assert.match(staffPage, /writingReviews/);
 
   const staffActions = await readFile(new URL("../app/staff/actions.ts", import.meta.url), "utf8");
@@ -92,6 +93,28 @@ test("protects and completes the teacher writing-review loop", async () => {
   assert.match(results, /Teacher feedback/);
   assert.match(results, /attempt\.finalScore/);
   assert.match(results, /writingReviews/);
+});
+
+test("implements named accounts, invitations, and audit history", async () => {
+  const accounts = await readFile(new URL("../lib/accounts.ts", import.meta.url), "utf8");
+  assert.match(accounts, /getCurrentAppUser/);
+  assert.match(accounts, /claimPilotLearningData/);
+  assert.match(accounts, /STAFF_MANAGER_ROLES/);
+
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  for (const fieldOrTable of ["auth_provider_id", "profile_completed_at", "staff_invitations", "audit_events"]) {
+    assert.match(schema, new RegExp(`\\"${fieldOrTable}\\"`));
+  }
+
+  const inviteActions = await readFile(new URL("../app/invite/[token]/actions.ts", import.meta.url), "utf8");
+  assert.match(inviteActions, /createHash\("sha256"\)/);
+  assert.match(inviteActions, /requireAuthenticatedUser/);
+  assert.match(inviteActions, /staff_invitation\.accepted/);
+
+  const staffUserActions = await readFile(new URL("../app/staff/users/actions.ts", import.meta.url), "utf8");
+  assert.match(staffUserActions, /randomBytes\(32\)/);
+  assert.match(staffUserActions, /requireStaffManager/);
+  assert.match(staffUserActions, /staff_role\.updated/);
 });
 
 test("generates and completes a personalised repair loop", async () => {

@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 
-const PILOT_STUDENT_COOKIE = "tb_pilot_student";
+export const PILOT_STUDENT_COOKIE = "tb_pilot_student";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export async function getPilotStudentId() {
@@ -51,4 +51,9 @@ export async function ensurePilotStudent() {
   });
 
   return studentId;
+}
+
+export async function clearPilotStudent() {
+  const cookieStore = await cookies();
+  cookieStore.delete(PILOT_STUDENT_COOKIE);
 }

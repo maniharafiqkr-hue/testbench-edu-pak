@@ -10,20 +10,14 @@ import {
   skills,
   users,
 } from "@/db/schema";
-import { getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 import { StudentShell } from "../../components/StudentShell";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentHome() {
-  const studentId = await getPilotStudentId();
-  if (!studentId) {
-    return (
-      <StudentShell current="home" kicker="YOUR ENGLISH STARTING POINT" title="Welcome to TestBench.">
-        <section className="next-action-card"><span className="card-kicker">YOUR NEXT BEST ACTION</span><h2>Start the English diagnostic</h2><p>Five short sections will establish your first evidence profile before teacher review.</p><Link className="button button-light" href="/app/diagnostic">Start diagnostic</Link></section>
-      </StudentShell>
-    );
-  }
+  const account = await requireStudentUser();
+  const studentId = account.id;
 
   const db = getDb();
   const [[student], [attempt], [plan], events] = await Promise.all([

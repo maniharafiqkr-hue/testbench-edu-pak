@@ -35,8 +35,8 @@ export default function Home() {
           <Link href="/staff">For teachers</Link>
         </nav>
         <div className="header-actions">
-          <Link className="text-link" href="/app/home">Log in</Link>
-          <Link className="button button-small" href="/app/diagnostic">Free diagnostic</Link>
+          <Link className="text-link" href="/auth/sign-in">Log in</Link>
+          <Link className="button button-small" href="/auth/sign-up">Create student account</Link>
         </div>
       </header>
 
@@ -46,7 +46,7 @@ export default function Home() {
           <h1>Don&apos;t just see your score. See what to fix next.</h1>
           <p className="hero-lede">TestBench turns English practice into a clear improvement loop: understand every lost mark, rewrite weak work, and retest the skill while it is still fresh.</p>
           <div className="hero-actions">
-            <Link className="button" href="/app/diagnostic">Take the free diagnostic</Link>
+            <Link className="button" href="/auth/sign-up">Take the free diagnostic</Link>
             <a className="button button-secondary" href="#method">See how it works</a>
           </div>
           <div className="trust-row" aria-label="Program facts">

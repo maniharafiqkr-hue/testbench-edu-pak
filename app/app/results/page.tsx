@@ -12,7 +12,7 @@ import {
   writingReviews,
 } from "@/db/schema";
 import { getReviewCriteria } from "@/lib/review-rubrics";
-import { getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 import { StudentShell } from "../../components/StudentShell";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +24,7 @@ type Props = {
 };
 
 export default async function ResultsPage({ searchParams }: Props) {
-  const studentId = await getPilotStudentId();
-  if (!studentId) {
-    redirect("/app/diagnostic");
-  }
+  const studentId = (await requireStudentUser()).id;
 
   const { attempt: requestedAttemptId } = await searchParams;
   const validAttemptId = requestedAttemptId && UUID_PATTERN.test(requestedAttemptId)

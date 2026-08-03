@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { requireStudentUser } from "@/lib/accounts";
 import { StudentShell } from "../../components/StudentShell";
 import { startDiagnosticAttempt } from "./actions";
 
-export default function DiagnosticInstructions() {
+export default async function DiagnosticInstructions() {
+  await requireStudentUser();
   return (
     <StudentShell current="practice" kicker="STARTING POINT" title="English diagnostic">
       <div className="instructions-layout">

@@ -1,6 +1,5 @@
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import {
   attempts,
@@ -9,7 +8,7 @@ import {
   skillProgressEvents,
   skills,
 } from "@/db/schema";
-import { getPilotStudentId } from "@/lib/pilot-session";
+import { requireStudentUser } from "@/lib/accounts";
 import { StudentShell } from "../../components/StudentShell";
 
 export const dynamic = "force-dynamic";
@@ -26,8 +25,7 @@ function eventLabel(source: string) {
 }
 
 export default async function ProgressPage() {
-  const studentId = await getPilotStudentId();
-  if (!studentId) redirect("/app/diagnostic");
+  const studentId = (await requireStudentUser()).id;
   const db = getDb();
   const [events, plans, returnedAttempts] = await Promise.all([
     db
