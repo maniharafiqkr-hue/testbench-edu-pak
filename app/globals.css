@@ -452,12 +452,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .profile-form label small { color: var(--ink-soft); font-weight: 500; }
 .profile-form input, .profile-form select { background: white; border: 1px solid #bdc9c3; border-radius: 10px; color: var(--ink); min-height: 48px; padding: 0 14px; width: 100%; }
 .profile-form-grid { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+.profile-form .profile-checkbox { align-items: flex-start; background: #f7faf8; border: 1px solid #d5dfda; border-radius: 10px; flex-direction: row; gap: 12px; padding: 14px; }
+.profile-form .profile-checkbox > input { flex: 0 0 auto; margin-top: 2px; min-height: 18px; padding: 0; width: 18px; }
+.profile-form .profile-checkbox > span { display: flex; flex-direction: column; gap: 3px; }
+.profile-form .profile-checkbox strong { font-size: 14px; }
 .profile-form .button { align-self: flex-start; margin-top: 6px; }
 .profile-card { margin: 0 auto; max-width: 760px; padding: 34px; }
 .profile-card h2, .staff-invite-panel h2, .role-guide h2, .author-ready-card h2 { font-family: Georgia, serif; font-size: 28px; font-weight: 500; margin: 10px 0; }
 .profile-card > div:first-child p, .author-ready-card p { color: var(--ink-soft); line-height: 1.6; }
 .profile-card > .text-link { display: inline-block; font-size: 13px; margin-top: 26px; }
 .account-button { align-items: center; display: flex; justify-content: center; min-width: 42px; }
+.app-user-menu { position: relative; }
+.app-user-menu > summary { align-items: center; background: #1d1f1e; border-radius: 12px; color: white; cursor: pointer; display: flex; gap: 10px; list-style: none; min-width: 210px; padding: 8px 12px; }
+.app-user-menu > summary::-webkit-details-marker { display: none; }
+.app-user-avatar { align-items: center; background: #f7f8f7; border-radius: 999px; color: #131514; display: inline-flex; flex: 0 0 42px; font-size: 15px; height: 42px; justify-content: center; }
+.app-user-menu-summary, .app-user-menu-identity > span:last-child { display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.app-user-menu-summary strong, .app-user-menu-identity strong { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-user-menu-summary small, .app-user-menu-identity small { color: #c8d0cc; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-user-menu-caret { border-bottom: 2px solid currentColor; border-right: 2px solid currentColor; height: 8px; margin: 0 4px 4px auto; transform: rotate(45deg); transition: transform 150ms ease; width: 8px; }
+.app-user-menu[open] .app-user-menu-caret { margin-bottom: -4px; transform: rotate(225deg); }
+.app-user-menu-popover { background: white; border: 1px solid #d6ded9; border-radius: 12px; box-shadow: 0 16px 36px rgba(25, 39, 32, 0.16); min-width: 280px; overflow: hidden; position: absolute; right: 0; top: calc(100% + 8px); z-index: 50; }
+.app-user-menu-identity { align-items: center; display: flex; gap: 12px; padding: 16px; }
+.app-user-avatar-light { background: #edf1ef; }
+.app-user-menu-identity small { color: var(--ink-soft); }
+.app-user-menu-popover nav { border-top: 1px solid #e1e7e3; display: grid; padding: 6px; }
+.app-user-menu-popover nav a { border-radius: 8px; color: var(--ink); font-size: 14px; padding: 10px 12px; text-decoration: none; }
+.app-user-menu-popover nav a:hover, .app-user-menu-popover nav a:focus-visible { background: #eef4f0; }
 .invitation-summary { background: var(--cream); border-radius: 12px; display: grid; gap: 8px 16px; grid-template-columns: auto 1fr; margin: 24px 0; padding: 18px; }
 .invitation-summary span { color: var(--ink-soft); font-size: 11px; text-transform: uppercase; }
 .invitation-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
@@ -522,6 +542,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .method-card h3 { margin-top: 34px; }
   .teacher-section { gap: 28px; margin-bottom: 70px; margin-top: 70px; padding: 32px; }
   .app-topbar { grid-template-columns: 1fr auto; padding: 14px 18px; }
+  .account-button .app-user-menu > summary, .staff-header .app-user-menu > summary { min-width: 0; padding: 6px 8px; }
+  .account-button .app-user-menu-summary, .account-button .app-user-menu-caret, .staff-header .app-user-menu-summary, .staff-header .app-user-menu-caret, .staff-header > div > span { display: none; }
+  .app-user-menu-popover { max-width: calc(100vw - 30px); min-width: 270px; }
   .exam-countdown { display: none; }
   .app-content { padding: 22px 15px 60px; }
   .next-action-card { padding: 24px; }

@@ -5,7 +5,8 @@ import { Brand } from "@/app/components/Brand";
 import { getDb } from "@/db";
 import {
   answers,
-  questions,
+  assessmentQuestions,
+  questionRevisions,
   repairItemReviews,
   repairPlanItems,
   repairPlans,
@@ -54,16 +55,17 @@ export default async function RewriteReviewPage({ params, searchParams }: Props)
 
   const [original] = await db
     .select({
-      context: questions.context,
+      context: questionRevisions.context,
       priorityImprovement: writingReviews.priorityImprovement,
-      prompt: questions.prompt,
+      prompt: questionRevisions.prompt,
       response: answers.response,
       rewriteInstruction: writingReviews.rewriteInstruction,
-      section: questions.section,
+      section: assessmentQuestions.section,
       strength: writingReviews.strength,
     })
     .from(answers)
-    .innerJoin(questions, eq(questions.id, answers.questionId))
+    .innerJoin(assessmentQuestions, eq(assessmentQuestions.id, answers.assessmentQuestionId))
+    .innerJoin(questionRevisions, eq(questionRevisions.id, assessmentQuestions.questionRevisionId))
     .leftJoin(writingReviews, eq(writingReviews.answerId, answers.id))
     .where(eq(answers.id, review.sourceAnswerId))
     .limit(1);

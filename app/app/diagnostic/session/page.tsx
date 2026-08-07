@@ -1,7 +1,13 @@
 import { and, asc, desc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { answers, assessments, attempts, questions } from "@/db/schema";
+import {
+  answers,
+  assessmentQuestions,
+  assessmentVersions,
+  attempts,
+  questionRevisions,
+} from "@/db/schema";
 import { requireStudentUser } from "@/lib/accounts";
 import { DiagnosticSessionClient, type DiagnosticQuestion } from "./DiagnosticSessionClient";
 
@@ -14,14 +20,14 @@ export default async function DiagnosticSessionPage() {
   const [attempt] = await db
     .select({
       id: attempts.id,
-      assessmentId: attempts.assessmentId,
+      assessmentVersionId: attempts.assessmentVersionId,
       status: attempts.status,
       startedAt: attempts.startedAt,
-      assessmentTitle: assessments.title,
-      durationMinutes: assessments.durationMinutes,
+      assessmentTitle: assessmentVersions.title,
+      durationMinutes: assessmentVersions.durationMinutes,
     })
     .from(attempts)
-    .innerJoin(assessments, eq(attempts.assessmentId, assessments.id))
+    .innerJoin(assessmentVersions, eq(attempts.assessmentVersionId, assessmentVersions.id))
     .where(eq(attempts.studentId, studentId))
     .orderBy(desc(attempts.startedAt))
     .limit(1);
@@ -37,20 +43,21 @@ export default async function DiagnosticSessionPage() {
   const [questionRows, answerRows] = await Promise.all([
     db
       .select({
-        id: questions.id,
-        section: questions.section,
-        marks: questions.marks,
-        prompt: questions.prompt,
-        context: questions.context,
-        options: questions.options,
-        kind: questions.type,
+        id: assessmentQuestions.id,
+        section: assessmentQuestions.section,
+        marks: assessmentQuestions.marks,
+        prompt: questionRevisions.prompt,
+        context: questionRevisions.context,
+        options: questionRevisions.options,
+        kind: questionRevisions.responseType,
       })
-      .from(questions)
-      .where(eq(questions.assessmentId, attempt.assessmentId))
-      .orderBy(asc(questions.position)),
+      .from(assessmentQuestions)
+      .innerJoin(questionRevisions, eq(assessmentQuestions.questionRevisionId, questionRevisions.id))
+      .where(eq(assessmentQuestions.assessmentVersionId, attempt.assessmentVersionId))
+      .orderBy(asc(assessmentQuestions.position)),
     db
       .select({
-        questionId: answers.questionId,
+        assessmentQuestionId: answers.assessmentQuestionId,
         response: answers.response,
         selectedOption: answers.selectedOption,
         isFlagged: answers.isFlagged,
@@ -59,7 +66,7 @@ export default async function DiagnosticSessionPage() {
       .where(and(eq(answers.attemptId, attempt.id))),
   ]);
 
-  const answerByQuestionId = new Map(answerRows.map((answer) => [answer.questionId, answer]));
+  const answerByQuestionId = new Map(answerRows.map((answer) => [answer.assessmentQuestionId, answer]));
   const diagnosticQuestions: DiagnosticQuestion[] = questionRows.map((question) => {
     const answer = answerByQuestionId.get(question.id);
     return {

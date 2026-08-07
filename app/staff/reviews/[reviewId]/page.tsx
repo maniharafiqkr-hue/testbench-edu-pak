@@ -3,7 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Brand } from "@/app/components/Brand";
 import { getDb } from "@/db";
-import { answers, assessments, attempts, questions, users, writingReviews } from "@/db/schema";
+import {
+  answers,
+  assessmentQuestions,
+  assessmentVersions,
+  attempts,
+  questionRevisions,
+  users,
+  writingReviews,
+} from "@/db/schema";
 import { getReviewCriteria } from "@/lib/review-rubrics";
 import { REVIEW_ROLES, requireStaffAccess } from "@/lib/accounts";
 import { ReviewForm } from "./ReviewForm";
@@ -26,18 +34,18 @@ export default async function WritingReviewPage({ params, searchParams }: Props)
 
   const [review] = await getDb()
     .select({
-      assessmentTitle: assessments.title,
+      assessmentTitle: assessmentVersions.title,
       attemptId: attempts.id,
-      context: questions.context,
-      marks: questions.marks,
-      position: questions.position,
+      context: questionRevisions.context,
+      marks: assessmentQuestions.marks,
+      position: assessmentQuestions.position,
       priorityImprovement: writingReviews.priorityImprovement,
-      prompt: questions.prompt,
-      questionType: questions.type,
+      prompt: questionRevisions.prompt,
+      questionType: questionRevisions.responseType,
       response: answers.response,
       rewriteInstruction: writingReviews.rewriteInstruction,
       rubric: writingReviews.rubric,
-      section: questions.section,
+      section: assessmentQuestions.section,
       status: writingReviews.status,
       strength: writingReviews.strength,
       studentName: users.displayName,
@@ -45,9 +53,10 @@ export default async function WritingReviewPage({ params, searchParams }: Props)
     })
     .from(writingReviews)
     .innerJoin(answers, eq(answers.id, writingReviews.answerId))
-    .innerJoin(questions, eq(questions.id, answers.questionId))
+    .innerJoin(assessmentQuestions, eq(assessmentQuestions.id, answers.assessmentQuestionId))
+    .innerJoin(questionRevisions, eq(questionRevisions.id, assessmentQuestions.questionRevisionId))
+    .innerJoin(assessmentVersions, eq(assessmentVersions.id, assessmentQuestions.assessmentVersionId))
     .innerJoin(attempts, eq(attempts.id, answers.attemptId))
-    .innerJoin(assessments, eq(assessments.id, attempts.assessmentId))
     .innerJoin(users, eq(users.id, attempts.studentId))
     .where(eq(writingReviews.id, reviewId))
     .limit(1);

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { UserButton } from "@neondatabase/auth-ui";
+import { requireStudentUser } from "@/lib/accounts";
+import { AppUserMenu } from "./AppUserMenu";
 import { Brand } from "./Brand";
 
 type StudentShellProps = {
@@ -17,7 +18,9 @@ const navigation = [
   ["profile", "Profile", "/app/profile"],
 ] as const;
 
-export function StudentShell({ current, title, kicker, children }: StudentShellProps) {
+export async function StudentShell({ current, title, kicker, children }: StudentShellProps) {
+  const user = await requireStudentUser();
+
   return (
     <div className="app-frame">
       <aside className="app-sidebar">
@@ -41,7 +44,7 @@ export function StudentShell({ current, title, kicker, children }: StudentShellP
             <h1>{title}</h1>
           </div>
           <div className="exam-countdown"><span>Board exam</span><strong>214 days</strong></div>
-          <div className="account-button" aria-label="Open account menu"><UserButton /></div>
+          <div className="account-button"><AppUserMenu user={user} /></div>
         </header>
         <div className="app-content">{children}</div>
       </div>

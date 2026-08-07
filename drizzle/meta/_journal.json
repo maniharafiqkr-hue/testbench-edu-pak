@@ -22,6 +22,27 @@
       "when": 1785764303393,
       "tag": "0002_dazzling_bullseye",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786081097258,
+      "tag": "0003_dizzy_ben_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786099066557,
+      "tag": "0004_phase1_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786099120672,
+      "tag": "0005_phase1_cleanup",
+      "breakpoints": true
     }
   ]
 }

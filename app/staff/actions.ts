@@ -7,7 +7,8 @@ import { ensurePilotTeacher } from "@/db/pilot-teacher";
 import {
   answers,
   attempts,
-  questions,
+  assessmentQuestions,
+  questionRevisions,
   repairItemReviews,
   repairPlanItems,
   repairPlans,
@@ -78,13 +79,14 @@ export async function returnWritingReview(formData: FormData) {
     .select({
       answerId: writingReviews.answerId,
       attemptId: answers.attemptId,
-      maximumMarks: questions.marks,
-      questionType: questions.type,
-      section: questions.section,
+      maximumMarks: assessmentQuestions.marks,
+      questionType: questionRevisions.responseType,
+      section: assessmentQuestions.section,
     })
     .from(writingReviews)
     .innerJoin(answers, eq(answers.id, writingReviews.answerId))
-    .innerJoin(questions, eq(questions.id, answers.questionId))
+    .innerJoin(assessmentQuestions, eq(assessmentQuestions.id, answers.assessmentQuestionId))
+    .innerJoin(questionRevisions, eq(questionRevisions.id, assessmentQuestions.questionRevisionId))
     .where(eq(writingReviews.id, reviewId))
     .limit(1);
 

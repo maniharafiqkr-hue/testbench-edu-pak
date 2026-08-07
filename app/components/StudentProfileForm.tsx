@@ -1,17 +1,10 @@
 import type { AppUser } from "@/lib/accounts";
 import { saveStudentProfile } from "@/app/onboarding/actions";
-
-const boards = [
-  "FBISE",
-  "BISE Lahore",
-  "BISE Rawalpindi",
-  "BISE Karachi",
-  "Cambridge O Level",
-  "Cambridge A Level",
-  "Other",
-];
+import { educationBoardGroups, findEducationBoard } from "@/lib/education-boards";
 
 export function StudentProfileForm({ user, returnTo }: { user: AppUser; returnTo: "onboarding" | "profile" }) {
+  const selectedBoardCode = findEducationBoard(user.board ?? "")?.code ?? "";
+
   return (
     <form action={saveStudentProfile} className="profile-form">
       <input name="returnTo" type="hidden" value={returnTo} />
@@ -31,15 +24,29 @@ export function StudentProfileForm({ user, returnTo }: { user: AppUser; returnTo
           </select>
         </label>
         <label>
-          <span>Board or curriculum</span>
-          <select defaultValue={user.board ?? "FBISE"} name="board" required>
-            {boards.map((board) => <option key={board} value={board}>{board}</option>)}
+          <span>Examination board</span>
+          <select defaultValue={selectedBoardCode} name="boardCode" required>
+            <option disabled value="">Select your board</option>
+            {educationBoardGroups.map((group) => (
+              <optgroup key={group.region} label={group.region}>
+                {group.boards.map((board) => (
+                  <option key={board.code} value={board.code}>{board.shortName}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </label>
       </div>
       <label>
         <span>School or college <small>optional</small></span>
         <input defaultValue={user.schoolName ?? ""} maxLength={200} name="schoolName" placeholder="For example, Islamabad Model College" />
+      </label>
+      <label className="profile-checkbox">
+        <input defaultChecked={user.isSelfStudy} name="isSelfStudy" type="checkbox" value="yes" />
+        <span>
+          <strong>I study independently</strong>
+          <small>Select this if you are preparing without a school or college.</small>
+        </span>
       </label>
       <button className="button" type="submit">{returnTo === "profile" ? "Save profile" : "Continue to TestBench"}</button>
     </form>

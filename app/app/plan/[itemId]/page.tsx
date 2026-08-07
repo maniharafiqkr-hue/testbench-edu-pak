@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/db";
 import {
   answers,
-  questions,
+  assessmentQuestions,
+  questionRevisions,
   repairItemReviews,
   repairPlanItems,
   repairPlans,
@@ -51,10 +52,10 @@ export default async function RepairActivityPage({ params, searchParams }: Props
       reviewStatus: repairItemReviews.status,
       selectedOption: repairPlanItems.selectedOption,
       skillName: skills.name,
-      sourceContext: questions.context,
-      sourcePrompt: questions.prompt,
+      sourceContext: questionRevisions.context,
+      sourcePrompt: questionRevisions.prompt,
       sourceResponse: answers.response,
-      sourceSection: questions.section,
+      sourceSection: assessmentQuestions.section,
       teacherPriority: writingReviews.priorityImprovement,
       teacherRewrite: writingReviews.rewriteInstruction,
       teacherStrength: writingReviews.strength,
@@ -65,7 +66,14 @@ export default async function RepairActivityPage({ params, searchParams }: Props
     .innerJoin(repairPlans, eq(repairPlans.id, repairPlanItems.planId))
     .leftJoin(skills, eq(skills.id, repairPlanItems.skillId))
     .leftJoin(answers, eq(answers.id, repairPlanItems.sourceAnswerId))
-    .leftJoin(questions, eq(questions.id, answers.questionId))
+    .leftJoin(
+      assessmentQuestions,
+      eq(assessmentQuestions.id, answers.assessmentQuestionId),
+    )
+    .leftJoin(
+      questionRevisions,
+      eq(questionRevisions.id, assessmentQuestions.questionRevisionId),
+    )
     .leftJoin(writingReviews, eq(writingReviews.answerId, answers.id))
     .leftJoin(repairItemReviews, eq(repairItemReviews.itemId, repairPlanItems.id))
     .where(and(eq(repairPlanItems.id, itemId), eq(repairPlans.studentId, studentId)))

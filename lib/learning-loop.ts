@@ -4,10 +4,11 @@ import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   answers,
+  assessmentQuestions,
   attempts,
   attemptSkillResults,
-  questionSkills,
-  questions,
+  questionRevisions,
+  questionRevisionSkills,
   repairPlanItems,
   repairPlans,
   skillProgressEvents,
@@ -248,25 +249,26 @@ export async function completeAttemptLearningLoop(attemptId: string) {
     .select({
       answerId: answers.id,
       awardedMarks: answers.awardedMarks,
-      marks: questions.marks,
+      marks: assessmentQuestions.marks,
       priorityImprovement: writingReviews.priorityImprovement,
-      questionType: questions.type,
+      questionType: questionRevisions.responseType,
       response: answers.response,
       rewriteInstruction: writingReviews.rewriteInstruction,
       rubric: writingReviews.rubric,
-      section: questions.section,
+      section: assessmentQuestions.section,
       skillCode: skills.code,
       skillId: skills.id,
       skillName: skills.name,
       strength: writingReviews.strength,
     })
     .from(answers)
-    .innerJoin(questions, eq(questions.id, answers.questionId))
-    .leftJoin(questionSkills, eq(questionSkills.questionId, questions.id))
-    .leftJoin(skills, eq(skills.id, questionSkills.skillId))
+    .innerJoin(assessmentQuestions, eq(assessmentQuestions.id, answers.assessmentQuestionId))
+    .innerJoin(questionRevisions, eq(questionRevisions.id, answers.questionRevisionId))
+    .leftJoin(questionRevisionSkills, eq(questionRevisionSkills.questionRevisionId, questionRevisions.id))
+    .leftJoin(skills, eq(skills.id, questionRevisionSkills.skillId))
     .leftJoin(writingReviews, eq(writingReviews.answerId, answers.id))
     .where(eq(answers.attemptId, attemptId))
-    .orderBy(asc(questions.position));
+    .orderBy(asc(assessmentQuestions.position));
 
   type Result = { skillId: string; code: string; name: string; score: number; maximumScore: number };
   const calculated = new Map<string, Result>();
@@ -297,6 +299,20 @@ export async function completeAttemptLearningLoop(attemptId: string) {
   }
 
   const results = [...calculated.values()];
+  const priorities = [...results].sort((left, right) =>
+    left.score / left.maximumScore - right.score / right.maximumScore,
+  );
+  const primary = priorities[0];
+  const practiceSkill = priorities.find((item) => ACTIVITIES[item.code]) ?? primary;
+  const retestSkill = practiceSkill;
+  const writingRow = rows.find((row) => row.questionType === "extended_writing" && row.rewriteInstruction)
+    ?? rows.find((row) => row.rewriteInstruction);
+  const rewriteSkill = priorities.find((item) => item.code === "narrative-organisation") ?? primary;
+
+  if (!primary || !practiceSkill || !retestSkill || !writingRow) {
+    throw new Error("The returned attempt does not contain enough evidence to build a repair plan.");
+  }
+
   for (const result of results) {
     const level = skillLevel(result.score, result.maximumScore);
     await db
@@ -338,20 +354,6 @@ export async function completeAttemptLearningLoop(attemptId: string) {
       set: { status: "active", updatedAt: now },
     })
     .returning({ id: repairPlans.id });
-
-  const priorities = [...results].sort((left, right) =>
-    left.score / left.maximumScore - right.score / right.maximumScore,
-  );
-  const primary = priorities[0];
-  const practiceSkill = priorities.find((item) => ACTIVITIES[item.code]) ?? primary;
-  const retestSkill = practiceSkill;
-  const writingRow = rows.find((row) => row.questionType === "extended_writing" && row.rewriteInstruction)
-    ?? rows.find((row) => row.rewriteInstruction);
-  const rewriteSkill = priorities.find((item) => item.code === "narrative-organisation") ?? primary;
-
-  if (!primary || !practiceSkill || !retestSkill || !writingRow) {
-    throw new Error("The returned attempt does not contain enough evidence to build a repair plan.");
-  }
 
   const practice = (ACTIVITIES[practiceSkill.code] ?? GENERIC_ACTIVITY).practice;
   const retest = (ACTIVITIES[retestSkill.code] ?? GENERIC_ACTIVITY).retest;

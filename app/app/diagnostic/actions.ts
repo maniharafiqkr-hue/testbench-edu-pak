@@ -4,14 +4,23 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { ensurePilotAssessment } from "@/db/pilot-assessment";
 import { getDb } from "@/db";
-import { answers, assessments, attempts, questions, writingReviews } from "@/db/schema";
+import {
+  answers,
+  assessments,
+  assessmentQuestions,
+  assessmentVersions,
+  attempts,
+  questionItems,
+  questionRevisions,
+  writingReviews,
+} from "@/db/schema";
 import { requireStudentUser } from "@/lib/accounts";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_RESPONSE_LENGTH = 5_000;
 
 export type DiagnosticAnswerDraft = {
-  questionId: string;
+  assessmentQuestionId: string;
   value: string;
   isFlagged: boolean;
 };
@@ -25,12 +34,13 @@ async function getOwnedAttempt(attemptId: string, studentId: string) {
     .select({
       id: attempts.id,
       assessmentId: attempts.assessmentId,
+      assessmentVersionId: attempts.assessmentVersionId,
       status: attempts.status,
       startedAt: attempts.startedAt,
-      durationMinutes: assessments.durationMinutes,
+      durationMinutes: assessmentVersions.durationMinutes,
     })
     .from(attempts)
-    .innerJoin(assessments, eq(attempts.assessmentId, assessments.id))
+    .innerJoin(assessmentVersions, eq(attempts.assessmentVersionId, assessmentVersions.id))
     .where(and(eq(attempts.id, attemptId), eq(attempts.studentId, studentId)))
     .limit(1);
 
@@ -49,39 +59,43 @@ async function persistDraftAnswers(
     throw new Error("Too many answers were submitted.");
   }
 
-  const uniqueDrafts = [...new Map(drafts.map((draft) => [draft.questionId, draft])).values()];
-  if (uniqueDrafts.some((draft) => !UUID_PATTERN.test(draft.questionId))) {
+  const uniqueDrafts = [...new Map(drafts.map((draft) => [draft.assessmentQuestionId, draft])).values()];
+  if (uniqueDrafts.some((draft) => !UUID_PATTERN.test(draft.assessmentQuestionId))) {
     throw new Error("An answer contains an invalid question identifier.");
   }
 
   const db = getDb();
-  const assessmentQuestions = await db
+  const versionQuestions = await db
     .select({
-      id: questions.id,
-      type: questions.type,
-      options: questions.options,
+      id: assessmentQuestions.id,
+      legacyQuestionId: questionItems.legacyQuestionId,
+      type: questionRevisions.responseType,
+      options: questionRevisions.options,
+      questionRevisionId: questionRevisions.id,
     })
-    .from(questions)
+    .from(assessmentQuestions)
+    .innerJoin(questionRevisions, eq(assessmentQuestions.questionRevisionId, questionRevisions.id))
+    .innerJoin(questionItems, eq(questionRevisions.questionItemId, questionItems.id))
     .where(
       and(
-        eq(questions.assessmentId, attempt.assessmentId),
+        eq(assessmentQuestions.assessmentVersionId, attempt.assessmentVersionId),
         inArray(
-          questions.id,
-          uniqueDrafts.map((draft) => draft.questionId),
+          assessmentQuestions.id,
+          uniqueDrafts.map((draft) => draft.assessmentQuestionId),
         ),
       ),
     );
 
-  if (assessmentQuestions.length !== uniqueDrafts.length) {
+  if (versionQuestions.length !== uniqueDrafts.length) {
     throw new Error("One or more answers do not belong to this diagnostic.");
   }
 
-  const questionById = new Map(assessmentQuestions.map((question) => [question.id, question]));
+  const questionById = new Map(versionQuestions.map((question) => [question.id, question]));
   const now = new Date();
 
   await Promise.all(
     uniqueDrafts.map((draft) => {
-      const question = questionById.get(draft.questionId);
+      const question = questionById.get(draft.assessmentQuestionId);
       if (!question) {
         throw new Error("Question not found.");
       }
@@ -90,22 +104,27 @@ async function persistDraftAnswers(
       const selectedOption = question.type === "multiple_choice" && value ? value : null;
       const response = question.type === "multiple_choice" || !value ? null : value;
 
-      if (selectedOption && !question.options?.includes(selectedOption)) {
+      if (selectedOption && !question.options?.some((option) => option.id === selectedOption)) {
         throw new Error("The selected answer is not a valid option.");
       }
 
       return db
         .insert(answers)
         .values({
+          assessmentQuestionId: question.id,
+          assessmentVersionId: attempt.assessmentVersionId,
           attemptId: attempt.id,
-          questionId: question.id,
+          questionId: question.legacyQuestionId,
+          questionRevisionId: question.questionRevisionId,
           response,
           selectedOption,
           isFlagged: Boolean(draft.isFlagged),
         })
         .onConflictDoUpdate({
-          target: [answers.attemptId, answers.questionId],
+          target: [answers.attemptId, answers.assessmentQuestionId],
           set: {
+            assessmentVersionId: attempt.assessmentVersionId,
+            questionRevisionId: question.questionRevisionId,
             response,
             selectedOption,
             isFlagged: Boolean(draft.isFlagged),
@@ -137,8 +156,26 @@ export async function startDiagnosticAttempt() {
     .limit(1);
 
   if (!existingAttempt) {
+    const [assessmentVersion] = await db
+      .select({ id: assessmentVersions.id })
+      .from(assessments)
+      .innerJoin(
+        assessmentVersions,
+        and(
+          eq(assessmentVersions.assessmentId, assessments.id),
+          eq(assessmentVersions.versionNumber, assessments.currentVersionNumber),
+        ),
+      )
+      .where(eq(assessments.id, assessmentId))
+      .limit(1);
+
+    if (!assessmentVersion) {
+      throw new Error("The current diagnostic version is unavailable.");
+    }
+
     await db.insert(attempts).values({
       assessmentId,
+      assessmentVersionId: assessmentVersion.id,
       studentId,
       status: "in_progress",
     });
@@ -176,40 +213,41 @@ export async function submitDiagnosticAttempt(
   await persistDraftAnswers(attempt, drafts);
 
   const db = getDb();
-  const [assessmentQuestions, savedAnswers] = await Promise.all([
+  const [versionQuestions, savedAnswers] = await Promise.all([
     db
       .select({
-        id: questions.id,
-        type: questions.type,
-        correctAnswer: questions.correctAnswer,
-        marks: questions.marks,
+        id: assessmentQuestions.id,
+        type: questionRevisions.responseType,
+        answerKey: questionRevisions.answerKey,
+        marks: assessmentQuestions.marks,
       })
-      .from(questions)
-      .where(eq(questions.assessmentId, attempt.assessmentId)),
+      .from(assessmentQuestions)
+      .innerJoin(questionRevisions, eq(assessmentQuestions.questionRevisionId, questionRevisions.id))
+      .where(eq(assessmentQuestions.assessmentVersionId, attempt.assessmentVersionId)),
     db
       .select({
         id: answers.id,
-        questionId: answers.questionId,
+        assessmentQuestionId: answers.assessmentQuestionId,
         selectedOption: answers.selectedOption,
       })
       .from(answers)
       .where(eq(answers.attemptId, attempt.id)),
   ]);
 
-  const answerByQuestionId = new Map(savedAnswers.map((answer) => [answer.questionId, answer]));
+  const answerByQuestionId = new Map(savedAnswers.map((answer) => [answer.assessmentQuestionId, answer]));
   let objectiveScore = 0;
   let needsTeacherReview = false;
   const now = new Date();
 
   await Promise.all(
-    assessmentQuestions.map(async (question) => {
+    versionQuestions.map(async (question) => {
       const answer = answerByQuestionId.get(question.id);
       if (!answer) {
         return;
       }
 
       if (question.type === "multiple_choice") {
-        const awardedMarks = answer.selectedOption === question.correctAnswer ? question.marks : 0;
+        const awardedMarks = answer.selectedOption === question.answerKey?.correctOptionId ? question.marks : 0;
         objectiveScore += awardedMarks;
         await db
           .update(answers)

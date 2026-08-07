@@ -4,10 +4,11 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import {
   answers,
-  assessments,
+  assessmentQuestions,
+  assessmentVersions,
   attempts,
   attemptSkillResults,
-  questions,
+  questionRevisions,
   skills,
   writingReviews,
 } from "@/db/schema";
@@ -33,8 +34,8 @@ export default async function ResultsPage({ searchParams }: Props) {
   const db = getDb();
   const [attempt] = await db
     .select({
-      assessmentId: attempts.assessmentId,
-      assessmentTitle: assessments.title,
+      assessmentTitle: assessmentVersions.title,
+      assessmentVersionId: attempts.assessmentVersionId,
       finalScore: attempts.finalScore,
       id: attempts.id,
       objectiveScore: attempts.objectiveScore,
@@ -43,7 +44,7 @@ export default async function ResultsPage({ searchParams }: Props) {
       submittedAt: attempts.submittedAt,
     })
     .from(attempts)
-    .innerJoin(assessments, eq(attempts.assessmentId, assessments.id))
+    .innerJoin(assessmentVersions, eq(attempts.assessmentVersionId, assessmentVersions.id))
     .where(
       validAttemptId
         ? and(eq(attempts.id, validAttemptId), eq(attempts.studentId, studentId))
@@ -61,27 +62,35 @@ export default async function ResultsPage({ searchParams }: Props) {
 
   const responseRows = await db
     .select({
+      answerKey: questionRevisions.answerKey,
+      assessmentQuestionId: assessmentQuestions.id,
       awardedMarks: answers.awardedMarks,
-      correctAnswer: questions.correctAnswer,
-      marks: questions.marks,
+      marks: assessmentQuestions.marks,
+      options: questionRevisions.options,
       priorityImprovement: writingReviews.priorityImprovement,
-      questionId: questions.id,
-      questionType: questions.type,
+      questionType: questionRevisions.responseType,
       reviewReturnedAt: writingReviews.returnedAt,
       reviewStatus: writingReviews.status,
       rewriteInstruction: writingReviews.rewriteInstruction,
       rubric: writingReviews.rubric,
-      section: questions.section,
+      section: assessmentQuestions.section,
       strength: writingReviews.strength,
     })
-    .from(questions)
+    .from(assessmentQuestions)
+    .innerJoin(
+      questionRevisions,
+      eq(questionRevisions.id, assessmentQuestions.questionRevisionId),
+    )
     .leftJoin(
       answers,
-      and(eq(answers.questionId, questions.id), eq(answers.attemptId, attempt.id)),
+      and(
+        eq(answers.assessmentQuestionId, assessmentQuestions.id),
+        eq(answers.attemptId, attempt.id),
+      ),
     )
     .leftJoin(writingReviews, eq(writingReviews.answerId, answers.id))
-    .where(eq(questions.assessmentId, attempt.assessmentId))
-    .orderBy(asc(questions.position));
+    .where(eq(assessmentQuestions.assessmentVersionId, attempt.assessmentVersionId))
+    .orderBy(asc(assessmentQuestions.position));
 
   const calculatedSkills = await db
     .select({
@@ -142,9 +151,16 @@ export default async function ResultsPage({ searchParams }: Props) {
           </div>
           <div className="recovery-list">
             {missedObjectiveRows.length ? missedObjectiveRows.slice(0, 2).map((row) => (
-              <article key={row.questionId}>
+              <article key={row.assessmentQuestionId}>
                 <span>+{row.marks}</span>
-                <div><strong>Review {row.section.toLowerCase()}</strong><p>The correct response was: {row.correctAnswer}</p></div>
+                <div>
+                  <strong>Review {row.section.toLowerCase()}</strong>
+                  <p>
+                    The correct response was: {row.options?.find(
+                      (option) => option.id === row.answerKey?.correctOptionId,
+                    )?.label ?? row.answerKey?.acceptedAnswers?.[0] ?? "See the answer guidance."}
+                  </p>
+                </div>
               </article>
             )) : (
               <article><span>✓</span><div><strong>Strong objective start</strong><p>You secured every automatically marked question.</p></div></article>
@@ -185,7 +201,7 @@ export default async function ResultsPage({ searchParams }: Props) {
             {returnedWrittenRows.map((row) => {
               const criteria = getReviewCriteria(row.questionType, row.section, row.marks);
               return (
-                <article className="writing-feedback-card" key={row.questionId}>
+                <article className="writing-feedback-card" key={row.assessmentQuestionId}>
                   <header><div><span>{row.section}</span><strong>{row.awardedMarks ?? 0} / {row.marks} marks</strong></div></header>
                   <div className="feedback-notes">
                     <div><span>Strength</span><p>{row.strength}</p></div>
@@ -218,7 +234,7 @@ export default async function ResultsPage({ searchParams }: Props) {
             const pending = row.questionType !== "multiple_choice" && row.reviewStatus !== "returned";
             const secure = !pending && score / row.marks >= 0.7;
             return (
-              <div key={row.questionId}>
+              <div key={row.assessmentQuestionId}>
                 <strong>{row.section}</strong>
                 <span className={`level ${pending ? "pending" : secure ? "secure" : "developing"}`}>
                   {pending ? "Pending" : secure ? "Secure" : "Developing"}

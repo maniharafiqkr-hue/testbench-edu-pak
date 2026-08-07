@@ -4,14 +4,17 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { users } from "@/db/schema";
+import { boardLevels, boards, users } from "@/db/schema";
 import {
   claimPilotLearningData,
   recordAuditEvent,
   requireAuthenticatedUser,
 } from "@/lib/accounts";
-
-const GRADES = ["grade_9", "grade_10", "o_level", "a_level"] as const;
+import {
+  findEducationBoard,
+  supportedGradeLevels,
+  type SupportedGradeLevel,
+} from "@/lib/education-boards";
 
 function textField(formData: FormData, name: string, max: number) {
   const value = formData.get(name);
@@ -24,22 +27,64 @@ export async function saveStudentProfile(formData: FormData) {
 
   const displayName = textField(formData, "displayName", 160);
   const gradeLevel = textField(formData, "gradeLevel", 30);
-  const board = textField(formData, "board", 120);
+  const boardCode = textField(formData, "boardCode", 80);
   const schoolName = textField(formData, "schoolName", 200);
+  const isSelfStudy = formData.get("isSelfStudy") === "yes";
   const returnTo = textField(formData, "returnTo", 30);
-  if (displayName.length < 2 || !GRADES.includes(gradeLevel as (typeof GRADES)[number]) || board.length < 2) {
-    redirect(`${returnTo === "profile" ? "/app/profile" : "/onboarding"}?error=profile`);
+  const returnPath = returnTo === "profile" ? "/app/profile" : "/onboarding";
+  const selectedBoard = findEducationBoard(boardCode);
+  const supportedGrade = supportedGradeLevels.includes(gradeLevel as SupportedGradeLevel);
+  if (displayName.length < 2 || !supportedGrade || !selectedBoard) {
+    redirect(`${returnPath}?error=profile`);
+  }
+  const selectedGrade = gradeLevel as SupportedGradeLevel;
+  if (!selectedBoard.gradeLevels.includes(selectedGrade)) {
+    redirect(`${returnPath}?error=board-grade`);
   }
 
   const now = new Date();
-  const [updated] = await getDb()
+  const db = getDb();
+  const [savedBoard] = await db
+    .insert(boards)
+    .values({
+      code: selectedBoard.code,
+      name: selectedBoard.name,
+      region: selectedBoard.region,
+      shortName: selectedBoard.shortName,
+      sortOrder: selectedBoard.sortOrder,
+      sourceUrl: selectedBoard.sourceUrl,
+      systemType: selectedBoard.systemType,
+    })
+    .onConflictDoUpdate({
+      target: boards.code,
+      set: {
+        isActive: true,
+        name: selectedBoard.name,
+        region: selectedBoard.region,
+        shortName: selectedBoard.shortName,
+        sortOrder: selectedBoard.sortOrder,
+        sourceUrl: selectedBoard.sourceUrl,
+        systemType: selectedBoard.systemType,
+        updatedAt: now,
+      },
+    })
+    .returning({ id: boards.id });
+
+  await Promise.all(selectedBoard.gradeLevels.map((level) => db
+    .insert(boardLevels)
+    .values({ boardId: savedBoard.id, gradeLevel: level })
+    .onConflictDoNothing({ target: [boardLevels.boardId, boardLevels.gradeLevel] })));
+
+  const [updated] = await db
     .update(users)
     .set({
-      board,
+      board: selectedBoard.shortName,
+      boardId: savedBoard.id,
       displayName,
-      gradeLevel: gradeLevel as (typeof GRADES)[number],
+      gradeLevel: selectedGrade,
+      isSelfStudy,
       profileCompletedAt: now,
-      schoolName: schoolName || null,
+      schoolName: isSelfStudy ? null : schoolName || null,
       updatedAt: now,
     })
     .where(eq(users.id, user.id))
@@ -50,7 +95,12 @@ export async function saveStudentProfile(formData: FormData) {
     action: user.profileCompletedAt ? "profile.updated" : "profile.completed",
     entityType: "user",
     entityId: user.id,
-    metadata: { board, gradeLevel, schoolProvided: Boolean(schoolName) },
+    metadata: {
+      boardCode: selectedBoard.code,
+      gradeLevel: selectedGrade,
+      isSelfStudy,
+      schoolProvided: !isSelfStudy && Boolean(schoolName),
+    },
   });
 
   revalidatePath("/app/home");

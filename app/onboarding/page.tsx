@@ -17,10 +17,11 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
       <section className="onboarding-card panel">
         <span className="eyebrow">WELCOME TO TESTBENCH</span>
         <h1>Set up your English profile.</h1>
-        <p>This helps us show the correct curriculum and keeps every attempt, teacher review, and repair plan under your account.</p>
-        {error === "profile" ? <div className="form-alert form-alert-error">Add your name, level, and board to continue.</div> : null}
+        <p>Your level and examination board help us match you with the right English curriculum and assessment pattern.</p>
+        {error === "profile" ? <div className="form-alert form-alert-error">Add your name, level, and a recognised examination board to continue.</div> : null}
+        {error === "board-grade" ? <div className="form-alert form-alert-error">That board does not offer the selected level. Check both selections and try again.</div> : null}
         <StudentProfileForm returnTo="onboarding" user={user} />
-        <small>If you already used the pilot diagnostic on this browser, that work will be moved into this account automatically.</small>
+        <small>Studying independently? Select the checkbox and you can leave the school field blank.</small>
       </section>
     </main>
   );

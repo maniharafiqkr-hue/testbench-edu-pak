@@ -1,13 +1,14 @@
 import { desc, eq } from "drizzle-orm";
 import Link from "next/link";
+import { AppUserMenu } from "@/app/components/AppUserMenu";
 import { Brand } from "@/app/components/Brand";
-import { UserButton } from "@neondatabase/auth-ui";
 import { getDb } from "@/db";
 import {
   answers,
-  assessments,
+  assessmentQuestions,
+  assessmentVersions,
   attempts,
-  questions,
+  questionRevisions,
   repairItemReviews,
   repairPlanItems,
   repairPlans,
@@ -38,21 +39,22 @@ export default async function StaffPage({
   const db = getDb();
   const rows = await db
     .select({
-      assessmentTitle: assessments.title,
+      assessmentTitle: assessmentVersions.title,
       attemptId: attempts.id,
       createdAt: writingReviews.createdAt,
-      marks: questions.marks,
-      questionPosition: questions.position,
+      marks: assessmentQuestions.marks,
+      questionPosition: assessmentQuestions.position,
       reviewId: writingReviews.id,
-      section: questions.section,
+      section: assessmentQuestions.section,
       status: writingReviews.status,
       studentName: users.displayName,
     })
     .from(writingReviews)
     .innerJoin(answers, eq(answers.id, writingReviews.answerId))
-    .innerJoin(questions, eq(questions.id, answers.questionId))
+    .innerJoin(assessmentQuestions, eq(assessmentQuestions.id, answers.assessmentQuestionId))
+    .innerJoin(questionRevisions, eq(questionRevisions.id, assessmentQuestions.questionRevisionId))
+    .innerJoin(assessmentVersions, eq(assessmentVersions.id, assessmentQuestions.assessmentVersionId))
     .innerJoin(attempts, eq(attempts.id, answers.attemptId))
-    .innerJoin(assessments, eq(assessments.id, attempts.assessmentId))
     .innerJoin(users, eq(users.id, attempts.studentId))
     .orderBy(desc(writingReviews.createdAt));
 
@@ -94,7 +96,7 @@ export default async function StaffPage({
         <Brand />
         <div>
           <span>{staff.user.displayName} · {ROLE_LABELS[staff.user.role]}</span>
-          {staff.legacy ? <form action={logoutTeacher}><button className="text-button" type="submit">Sign out</button></form> : <UserButton />}
+          {staff.legacy ? <form action={logoutTeacher}><button className="text-button" type="submit">Sign out</button></form> : <AppUserMenu user={staff.user} />}
         </div>
       </header>
 

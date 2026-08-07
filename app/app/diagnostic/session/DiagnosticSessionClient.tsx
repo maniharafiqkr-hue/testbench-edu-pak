@@ -13,7 +13,7 @@ export type DiagnosticQuestion = {
   marks: number;
   prompt: string;
   context: string | null;
-  options: string[] | null;
+  options: Array<{ id: string; label: string }> | null;
   kind: "multiple_choice" | "short_answer" | "extended_writing";
   initialValue: string;
   isFlagged: boolean;
@@ -77,11 +77,11 @@ export function DiagnosticSessionClient({
       setSaveState("saving");
       try {
         await saveDiagnosticAnswer(attemptId, draft);
-        if (saveVersions.current[draft.questionId] === version) {
+        if (saveVersions.current[draft.assessmentQuestionId] === version) {
           setSaveState("saved");
         }
       } catch {
-        if (saveVersions.current[draft.questionId] === version) {
+        if (saveVersions.current[draft.assessmentQuestionId] === version) {
           setSaveState("error");
         }
       }
@@ -95,7 +95,7 @@ export function DiagnosticSessionClient({
     window.clearTimeout(saveTimers.current[questionId]);
     setSaveState("saving");
     saveTimers.current[questionId] = window.setTimeout(() => {
-      void persistQuestion({ questionId, value, isFlagged }, nextVersion);
+      void persistQuestion({ assessmentQuestionId: questionId, value, isFlagged }, nextVersion);
     }, delay);
   }
 
@@ -139,7 +139,7 @@ export function DiagnosticSessionClient({
       setIsSubmitting(true);
       Object.values(saveTimers.current).forEach((timer) => window.clearTimeout(timer));
       const drafts = questions.map((item) => ({
-        questionId: item.id,
+        assessmentQuestionId: item.id,
         value: answerValues[item.id] ?? "",
         isFlagged: flagged.includes(item.id),
       }));
@@ -255,15 +255,15 @@ export function DiagnosticSessionClient({
               <div aria-label="Answer choices" className="answer-options" role="radiogroup">
                 {question.options?.map((option, index) => (
                   <button
-                    aria-checked={answerValues[question.id] === option}
-                    className={answerValues[question.id] === option ? "selected" : ""}
-                    key={option}
-                    onClick={() => updateAnswer(option)}
+                    aria-checked={answerValues[question.id] === option.id}
+                    className={answerValues[question.id] === option.id ? "selected" : ""}
+                    key={option.id}
+                    onClick={() => updateAnswer(option.id)}
                     role="radio"
                     type="button"
                   >
                     <span>{String.fromCharCode(65 + index)}</span>
-                    <p>{option}</p>
+                    <p>{option.label}</p>
                   </button>
                 ))}
               </div>
